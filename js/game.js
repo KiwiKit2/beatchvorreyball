@@ -27,6 +27,11 @@ class BeachVolleyballGame {
         this.passDelay = 1500; // Delay between AI passes
         this.rallyJustEnded = false; // Track if rally just ended
         
+        // Multiplayer properties
+        this.isMultiplayer = false;
+        this.isHost = false;
+        this.opponentId = null;
+        
         // Don't initialize immediately - wait for menu
         this.setupMenuIntegration();
     }
@@ -124,13 +129,39 @@ class BeachVolleyballGame {
         // Calculate ground level even lower on screen for final polish
         this.groundLevel = (this.engine.canvas.height * 0.88); // Much lower position
         
-        // Create player characters with selected character type
-        this.player1 = new Character(120, this.groundLevel - 180, this.playerConfig.character, true);
-        this.player2 = new Character(this.engine.canvas.width - 300, this.groundLevel - 180, this.playerConfig.character, false);
+        if (this.playerConfig.mode === 'local-multiplayer') {
+            // Local multiplayer mode - 2 human players
+            this.player1 = new Character(120, this.groundLevel - 180, this.playerConfig.character, true, 1);
+            this.player2 = new Character(this.engine.canvas.width - 300, this.groundLevel - 180, this.playerConfig.character, true, 2);
+            
+        } else if (this.playerConfig.mode === 'online-multiplayer') {
+            // Online multiplayer mode
+            this.isMultiplayer = true;
+            this.isHost = multiplayerManager.isHost;
+            
+            if (this.isHost) {
+                // Host is player 1 (left side)
+                this.player1 = new Character(120, this.groundLevel - 180, this.playerConfig.character, true, 1);
+                this.player2 = new Character(this.engine.canvas.width - 300, this.groundLevel - 180, this.playerConfig.character, false, 2);
+            } else {
+                // Guest is player 2 (right side)
+                this.player1 = new Character(120, this.groundLevel - 180, this.playerConfig.character, false, 1);
+                this.player2 = new Character(this.engine.canvas.width - 300, this.groundLevel - 180, this.playerConfig.character, true, 2);
+            }
+            
+        } else {
+            // Regular 1v1 vs AI mode
+            this.player1 = new Character(120, this.groundLevel - 180, this.playerConfig.character, true, 1);
+            this.player2 = new Character(this.engine.canvas.width - 300, this.groundLevel - 180, this.playerConfig.character, false, 1);
+        }
         
-        // Set ground level for characters
+        // Set ground level for all characters
         this.player1.setGroundLevel(this.groundLevel);
         this.player2.setGroundLevel(this.groundLevel);
+        
+        // Add objects to engine
+        this.engine.addGameObject(this.player1);
+        this.engine.addGameObject(this.player2);
         
         // Create volleyball in starting position
         this.volleyball = new Volleyball(
@@ -139,9 +170,6 @@ class BeachVolleyballGame {
         );
         this.volleyball.setGroundLevel(this.groundLevel);
         
-        // Add objects to engine
-        this.engine.addGameObject(this.player1);
-        this.engine.addGameObject(this.player2);
         this.engine.addGameObject(this.volleyball);
         
         console.log('Created game objects:', this.engine.gameObjects.length);
@@ -153,29 +181,130 @@ class BeachVolleyballGame {
         this.rallyInProgress = false;
         this.lastHitBy = null;
         
-        // Simple, direct player hitting - no complex state management
-        this.player1.setInteractable(true);
-        this.player1.onHitVolleyball = () => {
-            console.log("SIMPLE HIT: Player trying to hit volleyball");
-            this.tryPlayerHit();
-        };
-        
-        // Set up enhanced NPC behavior for player2
-        this.player2.setInteractable(false);
-        this.player2.isNPC = true;
-        this.player2.npcState = 'ready';
-        this.player2.npcTimer = 0;
-        this.player2.moveSpeed = 500;
-        this.player2.reactionTime = 100;
-        this.player2.anticipation = 0;
-        this.player2.skillLevel = 0.9;
-        this.player2.hitWindow = 250;
+        if (this.playerConfig.mode === 'local-multiplayer') {
+            // Local multiplayer mode setup - both players are human
+            this.player1.setInteractable(true);
+            this.player1.onHitVolleyball = () => {
+                console.log("SIMPLE HIT: Player 1 trying to hit volleyball");
+                this.tryPlayerHit(this.player1, 'player1');
+            };
+            
+            this.player2.setInteractable(true);
+            this.player2.onHitVolleyball = () => {
+                console.log("SIMPLE HIT: Player 2 trying to hit volleyball");
+                this.tryPlayerHit(this.player2, 'player2');
+            };
+            
+        } else if (this.playerConfig.mode === 'online-multiplayer') {
+            // Online multiplayer mode setup
+            if (this.isHost) {
+                // Host controls player1
+                this.player1.setInteractable(true);
+                this.player1.onHitVolleyball = () => {
+                    console.log("ONLINE HIT: Host hitting volleyball");
+                    this.tryPlayerHit(this.player1, 'host');
+                };
+                this.player2.setInteractable(false);
+            } else {
+                // Guest controls player2
+                this.player1.setInteractable(false);
+                this.player2.setInteractable(true);
+                this.player2.onHitVolleyball = () => {
+                    console.log("ONLINE HIT: Guest hitting volleyball");
+                    this.tryPlayerHit(this.player2, 'guest');
+                };
+            }
+            
+            // Setup multiplayer sync
+            this.setupMultiplayerSync();
+            
+        } else {
+            // Regular 1v1 vs AI mode setup
+            this.player1.setInteractable(true);
+            this.player1.onHitVolleyball = () => {
+                console.log("SIMPLE HIT: Player trying to hit volleyball");
+                this.tryPlayerHit(this.player1, 'player');
+            };
+            
+            // Set up NPC for player2
+            this.player2.setInteractable(false);
+            this.player2.isNPC = true;
+            this.player2.npcState = 'ready';
+            this.player2.npcTimer = 0;
+            this.player2.moveSpeed = 500;
+            this.player2.reactionTime = 100;
+            this.player2.anticipation = 0;
+            this.player2.skillLevel = 0.9;
+            this.player2.hitWindow = 250;
+        }
     }
     
-    tryPlayerHit() {
+    setupMultiplayerSync() {
+        if (!this.isMultiplayer) return;
+        
+        // Listen for game state updates from opponent
+        multiplayerManager.onGameStateUpdate((gameState) => {
+            if (gameState.ball) {
+                // Sync ball position and movement
+                this.volleyball.x = gameState.ball.x;
+                this.volleyball.y = gameState.ball.y;
+                this.volleyball.velocityX = gameState.ball.velocityX;
+                this.volleyball.velocityY = gameState.ball.velocityY;
+                this.volleyball.isMoving = gameState.ball.isMoving;
+            }
+            
+            // Sync opponent player position
+            if (this.isHost && gameState.player2) {
+                this.player2.x = gameState.player2.x;
+                this.player2.y = gameState.player2.y;
+                this.player2.velocityX = gameState.player2.velocityX;
+                this.player2.velocityY = gameState.player2.velocityY;
+            } else if (!this.isHost && gameState.player1) {
+                this.player1.x = gameState.player1.x;
+                this.player1.y = gameState.player1.y;
+                this.player1.velocityX = gameState.player1.velocityX;
+                this.player1.velocityY = gameState.player1.velocityY;
+            }
+        });
+    }
+    
+    syncGameState() {
+        if (!this.isMultiplayer) return;
+        
+        const updates = {
+            ball: {
+                x: this.volleyball.x,
+                y: this.volleyball.y,
+                velocityX: this.volleyball.velocityX,
+                velocityY: this.volleyball.velocityY,
+                isMoving: this.volleyball.isMoving
+            }
+        };
+        
+        // Sync our player position
+        if (this.isHost) {
+            updates.player1 = {
+                x: this.player1.x,
+                y: this.player1.y,
+                velocityX: this.player1.velocityX,
+                velocityY: this.player1.velocityY
+            };
+        } else {
+            updates.player2 = {
+                x: this.player2.x,
+                y: this.player2.y,
+                velocityX: this.player2.velocityX,
+                velocityY: this.player2.velocityY
+            };
+        }
+        
+        multiplayerManager.updateGameState(updates);
+    }
+    
+    tryPlayerHit(player, playerType) {
         // Better hit detection - check distance from player center to ball center
-        const playerCenterX = this.player1.x + this.player1.width / 2;
-        const playerCenterY = this.player1.y + this.player1.height / 2;
+        const playerCenterX = player.x + player.width / 2;
+        const playerCenterY = player.y + player.height / 2;
         const ballCenterX = this.volleyball.x + this.volleyball.width / 2;
         const ballCenterY = this.volleyball.y + this.volleyball.height / 2;
         
@@ -184,28 +313,51 @@ class BeachVolleyballGame {
             (ballCenterY - playerCenterY) ** 2
         );
         
-        console.log(`SIMPLE HIT: Distance to ball: ${Math.round(distance)}`);
+        console.log(`SIMPLE HIT: Distance to ball: ${Math.round(distance)} by ${playerType}`);
         
         if (distance < 180) { // Balanced hitting distance - not too far, not too close
             console.log("SIMPLE HIT: Close enough, hitting ball!");
             
+            // Determine ball direction based on which player hit it
+            let ballDirectionX = 350 + Math.random() * 150;
+            if (this.playerConfig.mode === 'local-multiplayer') {
+                // In local multiplayer, player1 hits to the right, player2 hits to the left
+                if (playerType === 'player1') {
+                    ballDirectionX = 350 + Math.random() * 150; // Hit to the right
+                } else if (playerType === 'player2') {
+                    ballDirectionX = -350 - Math.random() * 150; // Hit to the left
+                }
+            } else if (this.playerConfig.mode === 'online-multiplayer') {
+                // In online multiplayer, host hits to the right, guest hits to the left
+                if (playerType === 'host') {
+                    ballDirectionX = 350 + Math.random() * 150; // Hit to the right
+                } else if (playerType === 'guest') {
+                    ballDirectionX = -350 - Math.random() * 150; // Hit to the left
+                }
+            } else {
+                // In vs AI mode, player always hits to the right
+                ballDirectionX = 350 + Math.random() * 150;
+            }
+            
             // Direct ball hitting - smoother velocities
-            this.volleyball.velocityX = 350 + Math.random() * 150; // Smoother speed range
+            this.volleyball.velocityX = ballDirectionX;
             this.volleyball.velocityY = -450 - Math.random() * 150; // Better arc
             this.volleyball.isMoving = true; // CRITICAL: Mark ball as moving
             this.volleyball.isInAir = true; // Mark ball as in air
             
             // Play animation and sound
-            this.player1.playHitAnimation();
+            player.playHitAnimation();
             this.soundPresets.volleyballPass();
             
             // Update counters and start rally
             this.passCount++;
-            this.lastHitBy = 'player';
+            this.lastHitBy = playerType;
             this.rallyInProgress = true; // CRITICAL: Start rally tracking!
             
-            // Start NPC reaction
-            this.startAdvancedNPCReaction();
+            // Start NPC reaction only if there's an NPC
+            if (this.playerConfig.mode === 'vs-npc' && this.player2.isNPC) {
+                this.startAdvancedNPCReaction(this.player2);
+            }
             
             console.log(`SIMPLE HIT: Success! Ball velocity: ${Math.round(this.volleyball.velocityX)}, ${Math.round(this.volleyball.velocityY)}, isMoving: ${this.volleyball.isMoving}, Rally: ${this.rallyInProgress}`);
             return true;
@@ -215,11 +367,11 @@ class BeachVolleyballGame {
         }
     }
     
-    startAdvancedNPCReaction() {
-        this.player2.npcState = 'tracking';
-        this.player2.npcTimer = 0;
-        this.player2.reactionTime = 50 + Math.random() * 100;
-        this.player2.anticipation = Math.random() * 0.3;
+    startAdvancedNPCReaction(npcPlayer) {
+        npcPlayer.npcState = 'tracking';
+        npcPlayer.npcTimer = 0;
+        npcPlayer.reactionTime = 50 + Math.random() * 100;
+        npcPlayer.anticipation = Math.random() * 0.3;
         console.log("NPC starting to track ball!");
     }
     
@@ -495,8 +647,15 @@ class BeachVolleyballGame {
         // Let the engine handle basic updates
         // Add any additional game-specific logic here
         
-        // Update NPC behavior
-        this.updateNPC(deltaTime);
+        // Update NPC behavior (only for vs-npc mode)
+        if (this.playerConfig.mode === 'vs-npc') {
+            this.updateNPC(deltaTime);
+        }
+        
+        // Sync multiplayer game state
+        if (this.isMultiplayer) {
+            this.syncGameState();
+        }
         
         // Check for rally end conditions globally
         this.checkRallyEnd();
@@ -514,24 +673,41 @@ class BeachVolleyballGame {
     }
     
     updateUI() {
-        // Update HUD title with selected character
+        // Update controls text based on game mode
+        const controlsElement = document.getElementById('controlsText');
+        if (controlsElement && this.playerConfig) {
+            if (this.playerConfig.mode === 'local-multiplayer') {
+                controlsElement.textContent = 'P1: WASD + Space | P2: Arrows + Enter';
+            } else if (this.playerConfig.mode === 'online-multiplayer') {
+                if (this.isHost) {
+                    controlsElement.textContent = 'You (Host): WASD + Space';
+                } else {
+                    controlsElement.textContent = 'You (Guest): Arrows + Enter';
+                }
+            } else {
+                controlsElement.textContent = 'WASD to move and Space to jump + bump';
+            }
+        }
+        
+        // Keep HUD simple - just show basic controls
         const hudElement = document.querySelector('.hud');
         if (hudElement && this.player1) {
+            // Hide title (first div)
             const titleDiv = hudElement.children[0];
             if (titleDiv) {
-                titleDiv.textContent = `Beach Volleyball with ${this.player1.characterData.name}`;
+                titleDiv.style.display = 'none';
             }
             
-            const infoDiv = hudElement.children[3] || hudElement.appendChild(document.createElement('div'));
+            // Hide reset/mute instructions (third div)
+            const resetDiv = hudElement.children[2];
+            if (resetDiv) {
+                resetDiv.style.display = 'none';
+            }
             
-            if (this.gameState === 'loading') {
-                infoDiv.textContent = 'Loading volleyball court...';
-            } else if (this.gameState === 'serving') {
-                infoDiv.textContent = `${this.playerConfig.playerName}, ready to serve! Get close to the ball and press Space. Passes: ${this.passCount}`;
-            } else if (this.gameState === 'ready') {
-                infoDiv.textContent = `${this.playerConfig.playerName} - Move and press Space to bump/set. Passes: ${this.passCount}`;
-            } else if (this.gameState === 'playing') {
-                infoDiv.textContent = `${this.playerConfig.playerName} - Rally in progress! Passes: ${this.passCount}`;
+            // Remove any dynamic info div that might have been added
+            const infoDiv = hudElement.children[3];
+            if (infoDiv) {
+                infoDiv.style.display = 'none';
             }
         }
     }

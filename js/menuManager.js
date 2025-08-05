@@ -63,13 +63,19 @@ class MenuManager {
         modeButtons.forEach(button => {
             button.addEventListener('click', () => {
                 // Remove selected styling from all buttons
-                modeButtons.forEach(btn => btn.style.background = '');
+                modeButtons.forEach(btn => {
+                    btn.style.background = '';
+                    btn.classList.remove('selected-green');
+                });
                 
                 // Add selected styling to clicked button
-                button.style.background = 'linear-gradient(135deg, #228B22, #32CD32)';
+                button.classList.add('selected-green');
                 
                 // Update selected mode
                 this.selectedMode = button.dataset.mode;
+                
+                // Show/hide online options
+                this.toggleOnlineOptions();
                 
                 console.log(`Selected mode: ${this.selectedMode}`);
             });
@@ -78,8 +84,11 @@ class MenuManager {
         // Select VS NPC by default
         const defaultButton = document.querySelector('[data-mode="vs-npc"]');
         if (defaultButton) {
-            defaultButton.style.background = 'linear-gradient(135deg, #228B22, #32CD32)';
+            defaultButton.classList.add('selected-green');
         }
+        
+        // Setup online multiplayer functionality
+        this.setupOnlineMultiplayer();
     }
     
     setupNicknameInput() {
@@ -164,6 +173,125 @@ class MenuManager {
             mode: this.selectedMode,
             playerName: this.playerName || 'Player'
         };
+    }
+    
+    toggleOnlineOptions() {
+        const onlineOptions = document.getElementById('onlineOptions');
+        if (this.selectedMode === 'online-multiplayer') {
+            onlineOptions.style.display = 'block';
+        } else {
+            onlineOptions.style.display = 'none';
+            this.hideRoomInfo();
+        }
+    }
+    
+    setupOnlineMultiplayer() {
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const joinRoomInput = document.getElementById('joinRoomInput');
+        const joinRoomConfirmBtn = document.getElementById('joinRoomConfirmBtn');
+        const roomCodeInput = document.getElementById('roomCodeInput');
+        
+        // Create room functionality
+        createRoomBtn.addEventListener('click', async (event) => {
+            event.stopPropagation(); // Prevent bubbling to parent elements
+            this.showConnectionStatus('Creating room...', 'connecting');
+            
+            try {
+                await multiplayerManager.initialize();
+                const roomCode = await multiplayerManager.createRoom();
+                
+                if (roomCode) {
+                    this.showRoomInfo(roomCode, true);
+                    this.showConnectionStatus('Room created! Waiting for opponent...', 'connected');
+                }
+            } catch (error) {
+                this.showConnectionStatus('Failed to create room', 'disconnected');
+            }
+        });
+        
+        // Join room functionality
+        joinRoomBtn.addEventListener('click', (event) => {
+            event.stopPropagation(); // Prevent bubbling to parent elements
+            joinRoomInput.style.display = 'block';
+            roomCodeInput.focus();
+        });
+        
+        joinRoomConfirmBtn.addEventListener('click', async (event) => {
+            event.stopPropagation(); // Prevent bubbling to parent elements
+            const roomCode = roomCodeInput.value.trim().toUpperCase();
+            if (!roomCode) return;
+            
+            this.showConnectionStatus('Joining room...', 'connecting');
+            
+            try {
+                await multiplayerManager.initialize();
+                const success = await multiplayerManager.joinRoom(roomCode);
+                
+                if (success) {
+                    this.showRoomInfo(roomCode, false);
+                    this.showConnectionStatus('Connected! Ready to play!', 'connected');
+                }
+            } catch (error) {
+                this.showConnectionStatus('Failed to join room', 'disconnected');
+            }
+        });
+        
+        // Allow Enter key to join room
+        roomCodeInput.addEventListener('keypress', (e) => {
+            e.stopPropagation(); // Prevent bubbling
+            if (e.key === 'Enter') {
+                joinRoomConfirmBtn.click();
+            }
+        });
+        
+        // Prevent input from triggering mode selection
+        roomCodeInput.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent bubbling to parent elements
+        });
+        
+        // Setup multiplayer callbacks
+        multiplayerManager.onRoomJoined((roomCode, isHost) => {
+            this.showRoomInfo(roomCode, isHost);
+        });
+        
+        multiplayerManager.onOpponentJoined((opponent) => {
+            this.showConnectionStatus('Opponent joined! Ready to play!', 'connected');
+        });
+        
+        multiplayerManager.onOpponentLeft(() => {
+            this.showConnectionStatus('Opponent left the game', 'disconnected');
+        });
+        
+        multiplayerManager.onError((error) => {
+            this.showConnectionStatus(error, 'disconnected');
+        });
+    }
+    
+    showRoomInfo(roomCode, isHost) {
+        const roomInfo = document.getElementById('roomInfo');
+        const roomCodeDisplay = document.getElementById('roomCodeDisplay');
+        
+        roomCodeDisplay.textContent = `Room Code: ${roomCode}`;
+        roomInfo.style.display = 'block';
+        
+        // Hide join input if showing
+        document.getElementById('joinRoomInput').style.display = 'none';
+    }
+    
+    hideRoomInfo() {
+        const roomInfo = document.getElementById('roomInfo');
+        const joinRoomInput = document.getElementById('joinRoomInput');
+        
+        roomInfo.style.display = 'none';
+        joinRoomInput.style.display = 'none';
+    }
+    
+    showConnectionStatus(message, status) {
+        const connectionStatus = document.getElementById('connectionStatus');
+        const statusClass = status || 'disconnected';
+        
+        connectionStatus.innerHTML = `<span class="online-status ${statusClass}"></span>${message}`;
     }
 }
 

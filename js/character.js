@@ -1,12 +1,13 @@
 // Character class - Extensible for different characters
 class Character {
-    constructor(x, y, characterType = 'donQ', isPlayer = true) {
+    constructor(x, y, characterType = 'donQ', isPlayer = true, playerID = 1) {
         this.x = x;
         this.y = y;
         this.width = 220; // Even larger characters
         this.height = 220;
         this.characterType = characterType;
         this.isPlayer = isPlayer;
+        this.playerID = playerID; // 1 for WASD, 2 for Arrow keys + Enter
         this.zIndex = 2;
         
         // Movement properties - Enhanced for better feel
@@ -172,26 +173,45 @@ class Character {
     }
     
     handleMovement(dt) {
-        // Arrow key movement
-        if (this.engine.isKeyPressed('arrowleft') || this.engine.isKeyPressed('a')) {
-            this.velocityX = -this.speed;
-        }
-        if (this.engine.isKeyPressed('arrowright') || this.engine.isKeyPressed('d')) {
-            this.velocityX = this.speed;
-        }
-        
-        // Jump
-        if ((this.engine.isKeyPressed('arrowup') || this.engine.isKeyPressed('w') || this.engine.isKeyPressed(' ')) && this.onGround) {
-            this.velocityY = this.jumpPower;
-            this.onGround = false;
+        if (this.playerID === 1) {
+            // Player 1 controls: WASD
+            if (this.engine.isKeyPressed('a')) {
+                this.velocityX = -this.speed;
+            }
+            if (this.engine.isKeyPressed('d')) {
+                this.velocityX = this.speed;
+            }
+            // Jump
+            if ((this.engine.isKeyPressed('w') || this.engine.isKeyPressed(' ')) && this.onGround) {
+                this.velocityY = this.jumpPower;
+                this.onGround = false;
+            }
+        } else if (this.playerID === 2) {
+            // Player 2 controls: Arrow keys + Enter
+            if (this.engine.isKeyPressed('arrowleft')) {
+                this.velocityX = -this.speed;
+            }
+            if (this.engine.isKeyPressed('arrowright')) {
+                this.velocityX = this.speed;
+            }
+            // Jump
+            if ((this.engine.isKeyPressed('arrowup') || this.engine.isKeyPressed('enter')) && this.onGround) {
+                this.velocityY = this.jumpPower;
+                this.onGround = false;
+            }
         }
     }
     
     handleKeyDown(key, code) {
-        // Handle space bar for hitting volleyball
-        if ((key === ' ' || code === 'Space') && this.isPlayer) {
-            console.log(`SIMPLE KEYDOWN: ${this.characterData.name} space pressed`);
-            this.hitVolleyball();
+        // Handle hitting volleyball for different players
+        if (this.isPlayer) {
+            if (this.playerID === 1 && (key === ' ' || code === 'Space')) {
+                console.log(`SIMPLE KEYDOWN: ${this.characterData.name} (Player 1) space pressed`);
+                this.hitVolleyball();
+            } else if (this.playerID === 2 && (key === 'Enter' || code === 'Enter')) {
+                console.log(`SIMPLE KEYDOWN: ${this.characterData.name} (Player 2) enter pressed`);
+                this.hitVolleyball();
+            }
         }
     }
 

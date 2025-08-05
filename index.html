@@ -173,9 +173,33 @@
             background: rgba(33, 150, 243, 0.2);
         }
         
+        .mode-button.selected-green {
+            background: linear-gradient(135deg, #228B22, #32CD32) !important;
+            border-color: #4CAF50;
+        }
+        
         .mode-button.coming-soon {
             opacity: 0.4;
             cursor: not-allowed;
+        }
+        
+        .online-action-button {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .online-action-button:hover {
+            border-color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
         }
         
         .start-button {
@@ -199,6 +223,85 @@
             box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
         
+        /* GitHub Signature */
+        .github-signature {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            z-index: 1001;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+        
+        .github-signature:hover {
+            transform: translateY(-2px);
+        }
+        
+        .github-signature img {
+            width: 40px;
+            height: 40px;
+            transition: transform 0.3s ease;
+        }
+        
+        .github-signature:hover img {
+            transform: scale(1.1);
+        }
+        
+        /* Online Multiplayer Styles */
+        .online-mode-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        #roomInfo {
+            background: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 6px;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        #roomCodeDisplay {
+            color: #4CAF50;
+            text-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+        
+        #connectionStatus {
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        #joinRoomInput input {
+            width: 120px;
+        }
+        
+        .online-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .online-status.connected {
+            background: #4CAF50;
+            box-shadow: 0 0 6px rgba(76, 175, 80, 0.6);
+        }
+        
+        .online-status.connecting {
+            background: #FFC107;
+            animation: pulse 1s infinite;
+        }
+        
+        .online-status.disconnected {
+            background: #F44336;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
         /* Hidden class */
         .hidden {
             display: none;
@@ -207,10 +310,15 @@
 </head>
 <body>
     <div class="hud">
-        <div>Beach Volleyball with Don Quixote</div>
-        <div>Arrow Keys: Move | Space: Bump/Set/Spike</div>
-        <div>R: Reset | M: Mute</div>
+        <div style="display: none;">Beach Volleyball with Don Quixote</div>
+        <div id="controlsText">WASD to move and Space to jump + bump</div>
+        <div style="display: none;">R: Reset | M: Mute</div>
     </div>
+    
+    <!-- GitHub Signature -->
+    <a href="https://github.com/KiwiKit2" target="_blank" class="github-signature">
+        <img src="images/box.png" alt="GitHub">
+    </a>
     
     <!-- Game Menu -->
     <div id="gameMenu" class="menu-overlay">
@@ -246,7 +354,26 @@
                 <h2>Game Mode</h2>
                 <div class="game-mode-buttons">
                     <button class="mode-button selected" data-mode="vs-npc">VS Computer</button>
-                    <button class="mode-button coming-soon" data-mode="vs-player">VS Player (WIP)</button>
+                    <button class="mode-button" data-mode="local-multiplayer">Local 1v1</button>
+                    <button class="mode-button" data-mode="online-multiplayer">Online 1v1</button>
+                </div>
+            </div>
+            
+            <!-- Online Multiplayer Options (hidden by default) -->
+            <div id="onlineOptions" class="menu-section" style="display: none;">
+                <div class="online-mode-buttons">
+                    <button id="createRoomBtn" class="online-action-button">Create Room</button>
+                    <button id="joinRoomBtn" class="online-action-button">Join Room</button>
+                </div>
+                
+                <div id="joinRoomInput" class="nickname-input" style="display: none; margin-top: 15px;">
+                    <input type="text" id="roomCodeInput" placeholder="Enter room code" maxlength="6" style="text-transform: uppercase;">
+                    <button id="joinRoomConfirmBtn" style="margin-left: 10px; padding: 8px 16px; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">Join</button>
+                </div>
+                
+                <div id="roomInfo" style="display: none; margin-top: 15px;">
+                    <div id="roomCodeDisplay" style="font-size: 18px; font-weight: bold; margin-bottom: 10px;"></div>
+                    <div id="connectionStatus" style="font-size: 14px; opacity: 0.8;"></div>
                 </div>
             </div>
             
@@ -256,6 +383,11 @@
     
     <canvas id="gameCanvas"></canvas>
     
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <script src="js/multiplayerManager.js"></script>
     <script src="js/menuManager.js"></script>
     <script src="js/gameEngine.js"></script>
     <script src="js/character.js"></script>
