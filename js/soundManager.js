@@ -155,7 +155,16 @@ class SoundManager {
     }
     
     // Create sound presets for different game events
-    createSoundPresets() {
+    createSoundPresets(selectedCharacter = 'donQ') {
+        // Map character to their voice sound
+        const characterVoices = {
+            'donQ': 'donQsays',
+            'ryoshu': 'donQsays', // Using same voice for now, can add more later
+            'ideal': 'donQsays'   // Using same voice for now, can add more later
+        };
+        
+        const voiceSound = characterVoices[selectedCharacter] || 'donQsays';
+        
         return {
             // Volleyball hit with both sounds
             volleyballPass: () => {
@@ -165,8 +174,8 @@ class SoundManager {
                     volume: 0.8
                 });
                 
-                // Play Don's voice almost simultaneously
-                this.playSoundDelayed('donQsays', 100, {
+                // Play character's voice almost simultaneously
+                this.playSoundDelayed(voiceSound, 100, {
                     volume: 0.9
                 });
             },

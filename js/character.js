@@ -3,8 +3,8 @@ class Character {
     constructor(x, y, characterType = 'donQ', isPlayer = true) {
         this.x = x;
         this.y = y;
-        this.width = 180; // Even bigger characters for final polish
-        this.height = 180;
+        this.width = 220; // Even larger characters
+        this.height = 220;
         this.characterType = characterType;
         this.isPlayer = isPlayer;
         this.zIndex = 2;
@@ -99,24 +99,59 @@ class Character {
         // Apply friction
         this.velocityX *= 0.85;
         
-        // Handle animations
-        if (this.isAnimating) {
+        // Handle enhanced animations
+        if (this.isAnimating && this.currentAnimation) {
+            this.animationTime += deltaTime;
+            const totalDuration = this.currentAnimation.duration * 1000; // Convert to ms
+            
+            if (this.animationTime < totalDuration) {
+                const progress = this.animationTime / totalDuration;
+                
+                // Interpolate through animation sequences
+                const seqLength = this.currentAnimation.scaleSequence.length;
+                const exactIndex = progress * (seqLength - 1);
+                const animIndex = Math.floor(exactIndex);
+                const nextIndex = Math.min(animIndex + 1, seqLength - 1);
+                const localProgress = exactIndex - animIndex;
+                
+                // Smooth interpolation between keyframes
+                this.scale = lerp(
+                    this.currentAnimation.scaleSequence[animIndex],
+                    this.currentAnimation.scaleSequence[nextIndex],
+                    localProgress
+                );
+                
+                this.animationOffsetY = lerp(
+                    this.currentAnimation.offsetSequence[animIndex],
+                    this.currentAnimation.offsetSequence[nextIndex],
+                    localProgress
+                );
+                
+                this.rotation = lerp(
+                    this.currentAnimation.rotationSequence[animIndex],
+                    this.currentAnimation.rotationSequence[nextIndex],
+                    localProgress
+                );
+            } else {
+                // Animation finished - return to normal
+                this.isAnimating = false;
+                this.scale = 1;
+                this.animationOffsetY = 0;
+                this.rotation = 0;
+                this.currentAnimation = null;
+            }
+        } else if (this.isAnimating) {
+            // Fallback to simple animation if no currentAnimation
             this.animationTime += deltaTime;
             
-            // Natural volleyball hit animation
             if (this.animationTime < 300) {
-                // Quick upward motion like jumping to hit
                 const progress = this.animationTime / 300;
                 const jumpProgress = Math.sin(progress * Math.PI);
                 
-                // Slight upward movement and forward lean
-                this.animationOffsetY = -jumpProgress * 15; // Small upward movement
-                this.scale = lerp(1, 1.15, jumpProgress); // Slight scale increase
-                
-                // Subtle forward lean for hitting motion
+                this.animationOffsetY = -jumpProgress * 15;
+                this.scale = lerp(1, 1.15, jumpProgress);
                 this.rotation = jumpProgress * 0.1;
             } else if (this.animationTime < 600) {
-                // Landing and return to normal
                 const returnProgress = (this.animationTime - 300) / 300;
                 const easeOut = 1 - Math.pow(1 - returnProgress, 3);
                 
@@ -124,7 +159,6 @@ class Character {
                 this.scale = lerp(1.15, 1, easeOut);
                 this.rotation = lerp(0.1, 0, easeOut);
             } else {
-                // Animation complete
                 this.isAnimating = false;
                 this.animationTime = 0;
                 this.animationOffsetY = 0;
@@ -156,18 +190,21 @@ class Character {
     handleKeyDown(key, code) {
         // Handle space bar for hitting volleyball
         if ((key === ' ' || code === 'Space') && this.isPlayer) {
+            console.log(`SIMPLE KEYDOWN: ${this.characterData.name} space pressed`);
             this.hitVolleyball();
         }
     }
-    
+
     hitVolleyball() {
-        // This will be overridden by the game logic
+        // Super simple hit detection
+        console.log(`SIMPLE HIT: ${this.characterData.name} trying to hit`);
         if (this.onHitVolleyball) {
+            console.log(`SIMPLE HIT: ${this.characterData.name} calling callback`);
             this.onHitVolleyball();
+        } else {
+            console.log(`SIMPLE HIT: ${this.characterData.name} no callback set`);
         }
-    }
-    
-    setGroundLevel(groundY) {
+    }    setGroundLevel(groundY) {
         this.groundY = groundY;
     }
     
@@ -228,6 +265,36 @@ class Character {
     playHitAnimation() {
         this.isAnimating = true;
         this.animationTime = 0;
+        
+        // Create satisfying hit animation with different types
+        const hitAnimations = [
+            { // Spike animation
+                duration: 0.4,
+                scaleSequence: [1, 1.3, 1.1, 1],
+                offsetSequence: [0, -15, -10, 0],
+                rotationSequence: [0, 0.1, 0, 0]
+            },
+            { // Set animation  
+                duration: 0.5,
+                scaleSequence: [1, 1.2, 1.15, 1],
+                offsetSequence: [0, -20, -8, 0],
+                rotationSequence: [0, -0.05, 0, 0]
+            },
+            { // Bump animation
+                duration: 0.3,
+                scaleSequence: [1, 1.25, 1],
+                offsetSequence: [0, -12, 0],
+                rotationSequence: [0, 0.05, 0]
+            }
+        ];
+        
+        // Choose random animation for variety
+        this.currentAnimation = hitAnimations[Math.floor(Math.random() * hitAnimations.length)];
+        
+        // Add slight screen shake effect for impact
+        if (this.engine && this.engine.addScreenShake) {
+            this.engine.addScreenShake(2, 100); // Small shake for 100ms
+        }
     }
     
     setInteractable(canInteract) {

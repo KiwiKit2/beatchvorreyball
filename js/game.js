@@ -40,13 +40,21 @@ class BeachVolleyballGame {
     }
     
     async initialize() {
+        // Prevent multiple initializations
+        if (this.gameState !== 'menu') {
+            console.log('Game already initialized, skipping...');
+            return;
+        }
+        
+        this.gameState = 'loading';
+        
         try {
             // Load all images
             await this.loadAssets();
             
             // Initialize sound manager
             await soundManager.initialize();
-            this.soundPresets = soundManager.createSoundPresets();
+            this.soundPresets = soundManager.createSoundPresets(this.playerConfig.character);
             
             // Create game objects
             this.createGameObjects();
@@ -66,6 +74,7 @@ class BeachVolleyballGame {
             
         } catch (error) {
             console.error('Failed to initialize game:', error);
+            this.gameState = 'menu'; // Reset state on error
             this.showErrorMessage();
         }
     }
@@ -144,11 +153,11 @@ class BeachVolleyballGame {
         this.rallyInProgress = false;
         this.lastHitBy = null;
         
-        // Override player1's volleyball hitting
+        // Simple, direct player hitting - no complex state management
+        this.player1.setInteractable(true);
         this.player1.onHitVolleyball = () => {
-            if (this.canPlayerHit(this.player1)) {
-                this.onVolleyballHit(this.player1, 'player');
-            }
+            console.log("SIMPLE HIT: Player trying to hit volleyball");
+            this.tryPlayerHit();
         };
         
         // Set up enhanced NPC behavior for player2
@@ -156,56 +165,62 @@ class BeachVolleyballGame {
         this.player2.isNPC = true;
         this.player2.npcState = 'ready';
         this.player2.npcTimer = 0;
-        this.player2.moveSpeed = 500; // Even faster movement
-        this.player2.reactionTime = 100; // Very quick reactions
-        this.player2.anticipation = 0; // Predictive movement
-        this.player2.skillLevel = 0.9; // Very high skill level
-        this.player2.hitWindow = 250; // Larger time window to hit ball
+        this.player2.moveSpeed = 500;
+        this.player2.reactionTime = 100;
+        this.player2.anticipation = 0;
+        this.player2.skillLevel = 0.9;
+        this.player2.hitWindow = 250;
     }
     
-    canPlayerHit(player) {
-        // Adjusted hit detection for larger characters
-        const distance = this.volleyball.isNearCharacter(player, 240); // Larger hit zone for bigger characters
-        const ballHeight = this.volleyball.y + this.volleyball.height;
-        const courtHeight = this.groundLevel;
-        const ballInReachableHeight = ballHeight > courtHeight - 400; // Higher reach for larger characters
-        const notMovingTooFast = Math.abs(this.volleyball.velocityY) < 800;
+    tryPlayerHit() {
+        // Better hit detection - check distance from player center to ball center
+        const playerCenterX = this.player1.x + this.player1.width / 2;
+        const playerCenterY = this.player1.y + this.player1.height / 2;
+        const ballCenterX = this.volleyball.x + this.volleyball.width / 2;
+        const ballCenterY = this.volleyball.y + this.volleyball.height / 2;
         
-        // Always allow hitting when ball is near - no side restrictions for better flow
-        return distance && ballInReachableHeight && notMovingTooFast;
-    }
-    
-    onVolleyballHit(player, side) {
-        if (this.volleyball.hitFromCharacter(player)) {
-            player.playHitAnimation();
+        const distance = Math.sqrt(
+            (ballCenterX - playerCenterX) ** 2 + 
+            (ballCenterY - playerCenterY) ** 2
+        );
+        
+        console.log(`SIMPLE HIT: Distance to ball: ${Math.round(distance)}`);
+        
+        if (distance < 180) { // Balanced hitting distance - not too far, not too close
+            console.log("SIMPLE HIT: Close enough, hitting ball!");
             
-            // Play both hit and voice sounds together
+            // Direct ball hitting - smoother velocities
+            this.volleyball.velocityX = 350 + Math.random() * 150; // Smoother speed range
+            this.volleyball.velocityY = -450 - Math.random() * 150; // Better arc
+            this.volleyball.isMoving = true; // CRITICAL: Mark ball as moving
+            this.volleyball.isInAir = true; // Mark ball as in air
+            
+            // Play animation and sound
+            this.player1.playHitAnimation();
             this.soundPresets.volleyballPass();
             
+            // Update counters and start rally
             this.passCount++;
-            this.lastHitBy = side;
-            this.rallyInProgress = true;
-            this.gameState = 'rally';
+            this.lastHitBy = 'player';
+            this.rallyInProgress = true; // CRITICAL: Start rally tracking!
             
-            console.log(`${side} hit! Rally continues - passes: ${this.passCount}`);
+            // Start NPC reaction
+            this.startAdvancedNPCReaction();
             
-            // Enhanced NPC reaction for smoother gameplay
-            if (side === 'player') {
-                this.startAdvancedNPCReaction();
-            } else {
-                // When NPC hits, give player a moment to get ready
-                setTimeout(() => {
-                    this.gameState = 'ready';
-                }, 200);
-            }
+            console.log(`SIMPLE HIT: Success! Ball velocity: ${Math.round(this.volleyball.velocityX)}, ${Math.round(this.volleyball.velocityY)}, isMoving: ${this.volleyball.isMoving}, Rally: ${this.rallyInProgress}`);
+            return true;
+        } else {
+            console.log("SIMPLE HIT: Too far from ball");
+            return false;
         }
     }
     
     startAdvancedNPCReaction() {
         this.player2.npcState = 'tracking';
         this.player2.npcTimer = 0;
-        this.player2.reactionTime = 100 + Math.random() * 150; // Very quick reactions
-        this.player2.anticipation = Math.random() * 0.3; // Add some prediction
+        this.player2.reactionTime = 50 + Math.random() * 100;
+        this.player2.anticipation = Math.random() * 0.3;
+        console.log("NPC starting to track ball!");
     }
     
     updateNPC(deltaTime) {
@@ -228,14 +243,20 @@ class BeachVolleyballGame {
         const futureX = ballX + ballVelX * predictionTime;
         const futureY = ballY + ballVelY * predictionTime + 0.5 * gravity * predictionTime * predictionTime;
         
+        // Debug: Log NPC state occasionally
+        if (Math.random() < 0.01) { // 1% chance to log
+            console.log(`NPC State: ${this.player2.npcState}, Ball at: (${Math.round(ballX)}, ${Math.round(ballY)}), NPC at: ${Math.round(npcX)}, BallVelX: ${Math.round(ballVelX)}`);
+        }
+        
         switch (this.player2.npcState) {
             case 'tracking':
                 // Enhanced tracking with better anticipation
                 if (this.player2.npcTimer > this.player2.reactionTime) {
-                    // Check if ball is coming to NPC's side with more lenient conditions
-                    if (ballX > courtMiddle - 120 && ballVelX > -50) { // More forgiving tracking
+                    // Much more lenient tracking conditions
+                    if (ballX > courtMiddle - 200 && ballVelX > -100) { // Very forgiving tracking
                         this.player2.npcState = 'positioning';
                         this.player2.targetX = this.calculateOptimalPosition(futureX, futureY);
+                        console.log("NPC switching to positioning mode");
                     }
                 }
                 break;
@@ -244,7 +265,7 @@ class BeachVolleyballGame {
                 // Smarter positioning with better prediction
                 const distanceToTarget = this.player2.targetX - npcX;
                 
-                if (Math.abs(distanceToTarget) > 15) { // Tighter positioning
+                if (Math.abs(distanceToTarget) > 30) { // More lenient positioning tolerance
                     // Move toward optimal position with adaptive speed
                     const moveDirection = Math.sign(distanceToTarget);
                     let moveSpeed = this.player2.moveSpeed;
@@ -262,6 +283,7 @@ class BeachVolleyballGame {
                 } else {
                     this.player2.velocityX *= 0.5; // Quick deceleration
                     this.player2.npcState = 'ready';
+                    console.log("NPC ready to hit!");
                 }
                 
                 // Continuously update target position for better tracking
@@ -272,26 +294,27 @@ class BeachVolleyballGame {
                 // Enhanced ready state with better hit timing
                 this.player2.velocityX *= 0.75; // Controlled deceleration
                 
-                // Fine positioning adjustments with larger tolerance
+                // Fine positioning adjustments with appropriate tolerance
                 const ballDistance = Math.abs(ballX - npcX);
-                if (ballDistance < 200 && ballVelX > -100) { // More forgiving conditions
+                if (ballDistance < 250) { // Reasonable approach range
                     const adjustment = (ballX - npcX) * 0.4;
                     this.player2.velocityX += adjustment;
                 }
                 
-                // Enhanced hit opportunity detection with better timing
-                if (this.canNPCHit()) {
-                    // Multiple attempts for more reliable hitting
+                // Try to hit if close enough to the ball
+                if (ballDistance < 220) { // Approach distance before attempting hit
+                    console.log(`NPC attempting hit - distance: ${ballDistance}`);
                     const hitSuccess = this.npcHitVolleyball();
                     if (hitSuccess) {
                         console.log("NPC hit successful!");
+                    } else {
+                        console.log("NPC hit failed!");
                     }
                 }
                 
-                // More lenient reset conditions to avoid missing opportunities
-                if (this.volleyball.isOnGround() || 
-                    ballX < courtMiddle - 200 || 
-                    (ballVelX < -150 && ballDistance > 300)) {
+                // Much more lenient reset conditions
+                if (this.volleyball.isOnGround()) {
+                    console.log("Ball hit ground, ending rally");
                     this.endRally();
                 }
                 break;
@@ -347,58 +370,63 @@ class BeachVolleyballGame {
         return optimalX;
     }
     
-    canNPCHit() {
-        const ballDistance = this.volleyball.isNearCharacter(this.player2, 220); // Adjusted for larger NPC
-        const ballHeight = this.volleyball.y + this.volleyball.height;
-        const courtHeight = this.groundLevel;
-        const ballNotTooHigh = ballHeight > courtHeight - 350;
-        const ballNotTooFast = Math.abs(this.volleyball.velocityY) < 800;
-        const ballIsMoving = Math.abs(this.volleyball.velocityX) > 20; // Ball must be moving slightly
-        
-        return ballDistance && ballNotTooHigh && ballNotTooFast && ballIsMoving;
-    }
-    
     endRally() {
-        console.log(`Rally ending - Pass count: ${this.passCount}, Rally just ended: ${this.rallyJustEnded}`);
+        console.log(`Rally ending - Pass count: ${this.passCount}, Rally was in progress: ${this.rallyInProgress}`);
         
-        // Check if we had a meaningful rally (3+ passes)
-        if (this.passCount >= 3 && !this.rallyJustEnded) {
+        // Check if we had a meaningful rally (2+ passes for more frequent sounds)
+        if (this.passCount >= 2 && this.rallyInProgress) {
             console.log("Playing awh sound - rally ended!");
             this.soundPresets.rallyEnd();
-            this.rallyJustEnded = true;
             console.log(`Rally ended! Total passes: ${this.passCount}`);
-            
-            // Reset the flag after a delay
-            setTimeout(() => {
-                this.rallyJustEnded = false;
-                console.log("Rally just ended flag reset");
-            }, 2000);
         }
         
         // Reset game state
         this.player2.npcState = 'waiting';
         this.rallyInProgress = false;
         this.gameState = 'ready';
-        this.passCount = 0; // Reset pass count for next rally
+        this.passCount = 0;
     }
     
     npcHitVolleyball() {
-        if (this.volleyball.hitFromCharacter(this.player2)) {
-            this.player2.playHitAnimation();
+        // Better NPC hit detection - check distance from NPC center to ball center
+        const npcCenterX = this.player2.x + this.player2.width / 2;
+        const npcCenterY = this.player2.y + this.player2.height / 2;
+        const ballCenterX = this.volleyball.x + this.volleyball.width / 2;
+        const ballCenterY = this.volleyball.y + this.volleyball.height / 2;
+        
+        const distance = Math.sqrt(
+            (ballCenterX - npcCenterX) ** 2 + 
+            (ballCenterY - npcCenterY) ** 2
+        );
+        
+        console.log(`NPC HIT: Distance to ball: ${Math.round(distance)}`);
+        
+        if (distance < 200) { // Slightly more generous for NPC
+            console.log("NPC HIT: Close enough, hitting ball!");
             
-            // Play both hit and voice sounds together
+            // Send ball back to player side with smoother velocities
+            this.volleyball.velocityX = -350 - Math.random() * 150; // Smoother speed to left
+            this.volleyball.velocityY = -450 - Math.random() * 150; // Better arc
+            this.volleyball.isMoving = true; // CRITICAL: Mark ball as moving
+            this.volleyball.isInAir = true; // Mark ball as in air
+            
+            // Play animation and sound
+            this.player2.playHitAnimation();
             this.soundPresets.volleyballPass();
             
+            // Update counters and maintain rally
             this.passCount++;
             this.lastHitBy = 'npc';
-            console.log(`NPC hit! Rally continues - passes: ${this.passCount}`);
+            this.rallyInProgress = true; // Keep rally going
             
             // Reset NPC state
             this.player2.npcState = 'waiting';
-            this.player2.npcTimer = 0;
             
-            // Keep rally going
-            this.gameState = 'ready';
+            console.log(`NPC HIT: Success! Ball velocity: ${Math.round(this.volleyball.velocityX)}, ${Math.round(this.volleyball.velocityY)}, isMoving: ${this.volleyball.isMoving}, Rally: ${this.rallyInProgress}`);
+            return true;
+        } else {
+            console.log("NPC HIT: Too far from ball");
+            return false;
         }
     }
     
@@ -418,8 +446,7 @@ class BeachVolleyballGame {
         // Pass the volleyball
         this.volleyball.passToTarget(targetX, targetY);
         
-        // Play sound effects
-        this.soundPresets.volleyballPass();
+        // Sound handled by main hit detection system
         
         // Update game state
         this.isPlayerTurn = !this.isPlayerTurn;
@@ -622,6 +649,12 @@ function initializeGameBackground() {
 function startBeachVolleyball(config) {
     console.log('startBeachVolleyball called with:', config);
     
+    // Prevent multiple game starts
+    if (window.game && window.game.gameState !== 'menu') {
+        console.log('Game already running, ignoring duplicate start request');
+        return;
+    }
+    
     // Stop any existing game first
     if (window.game && window.game.engine) {
         window.game.engine.stop();
@@ -637,15 +670,15 @@ function startBeachVolleyball(config) {
         const game = new BeachVolleyballGame();
         game.playerConfig = config;
         
+        // Make game accessible globally immediately
+        window.game = game;
+        
         // Clear any existing game objects from the engine
         game.engine.gameObjects = [];
         
         // Initialize the full game
         game.initialize().then(() => {
             console.log('Game initialization complete');
-            game.createGameObjects();
-            game.setupGameLogic();
-            game.engine.start();
             console.log('Game started successfully with config:', config);
         }).catch(error => {
             console.error('Error starting game:', error);
@@ -658,9 +691,6 @@ function startBeachVolleyball(config) {
                 hudElement.appendChild(errorDiv);
             }
         });
-        
-        // Make game accessible globally
-        window.game = game;
         
         // Add keyboard shortcuts
         document.addEventListener('keydown', (e) => {

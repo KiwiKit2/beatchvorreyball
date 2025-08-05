@@ -3,17 +3,17 @@ class Volleyball {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.width = 50; // Bigger volleyball
-        this.height = 50;
+        this.width = 65; // Larger volleyball
+        this.height = 65;
         this.zIndex = 3;
         
-        // Physics properties
+        // Physics properties - tuned for smooth gameplay
         this.velocityX = 0;
         this.velocityY = 0;
-        this.gravity = 800; // Lighter gravity for volleyball float
-        this.bounce = 0.3; // Less bouncy like a real volleyball
-        this.friction = 0.98;
-        this.airResistance = 0.999; // Minimal air resistance
+        this.gravity = 800; // Slightly reduced for smoother arcs
+        this.bounce = 0.35; // Increased bounce for more lively feel
+        this.friction = 0.92; // Reduced friction for smoother movement
+        this.airResistance = 0.999; // Less air resistance for smoother flight
         this.isMoving = false;
         
         // Animation properties
@@ -21,15 +21,17 @@ class Volleyball {
         this.rotationSpeed = 0;
         this.scale = 1;
         this.targetScale = 1;
+        this.scaleSpeed = 0.1;
         
-        // Trail effect
+        // Enhanced trail effect
         this.trail = [];
-        this.maxTrailLength = 6;
+        this.maxTrailLength = 8;
         
         // State
         this.isInAir = false;
         this.groundY = 0;
         this.lastHitTime = 0;
+        this.lastHitType = 'bump';
     }
     
     update(deltaTime) {
@@ -73,12 +75,17 @@ class Volleyball {
                     this.velocityY = 0;
                 }
                 
-                // Stop if moving slowly
+                // Visual impact effect on ground hit
+                this.targetScale = 1.15;
+                
+                // Stop if moving slowly - lowered threshold for smoother feel
                 if (Math.abs(this.velocityX) < 30 && Math.abs(this.velocityY) < 30) {
                     this.velocityX = 0;
                     this.velocityY = 0;
                     this.isMoving = false;
                     this.rotationSpeed = 0;
+                    this.targetScale = 1;
+                    this.trail = []; // Clear trail when stopped
                 }
             }
             
@@ -93,13 +100,17 @@ class Volleyball {
             }
         }
         
-        // Smooth scale transitions
-        this.scale = lerp(this.scale, this.targetScale, deltaTime * 0.01);
+        // Enhanced smooth scale transitions with better timing
+        this.scale = lerp(this.scale, this.targetScale, deltaTime * 0.008);
+        
+        // Return to normal scale gradually
+        if (Math.abs(this.targetScale - 1) > 0.01 && this.targetScale > 1) {
+            this.targetScale = lerp(this.targetScale, 1, deltaTime * 0.003);
+        }
     }
     
     render(ctx) {
-        // Draw trail
-        this.drawTrail(ctx);
+        // Trail removed for cleaner appearance
         
         ctx.save();
         
@@ -201,12 +212,11 @@ class Volleyball {
         return Math.abs(this.y + this.height - this.groundY) < 5;
     }
     
-    // Enhanced volleyball rally mechanics - much more reliable
+    // Enhanced volleyball rally mechanics - polished and satisfying
+    // Enhanced volleyball rally mechanics - polished and satisfying
     hitFromCharacter(character) {
         const now = Date.now();
-        if (now - this.lastHitTime < 300) return false; // Shorter cooldown for better responsiveness
-        
-        this.lastHitTime = now;
+        if (now - this.lastHitTime < 200) return false; // Prevent rapid hits
         
         // Calculate distance to character
         const charCenterX = character.getCenterX();
@@ -216,55 +226,130 @@ class Volleyball {
         
         const distance = Math.sqrt((ballCenterX - charCenterX) ** 2 + (ballCenterY - charCenterY) ** 2);
         
-        // Much more forgiving hit detection for larger characters
-        if (distance > 240) return false;
+        // Generous but not too forgiving hit detection
+        if (distance > 200) return false;
         
-        // Determine which side and create reliable rally pass
+        // Check if ball is at a reasonable height to hit
+        const ballHeight = ballCenterY;
+        const charHeight = charCenterY;
+        if (Math.abs(ballHeight - charHeight) > 150) return false;
+        
+        this.lastHitTime = now;
+        
+        // Determine which side and create natural volleyball trajectory
         const courtMiddle = this.engine?.canvas.width / 2 || 400;
         const isLeftSide = character.x < courtMiddle;
         
-        // Create consistent, reliable volleyball passes
+        // Create natural volleyball physics
         let targetX, targetY;
+        let hitType = this.determineHitType(character, distance);
         
         if (isLeftSide) {
-            // Left side player - send to right side (more consistent targeting)
-            targetX = courtMiddle + 100 + Math.random() * 150;
+            // Left side player - send to right side
+            targetX = courtMiddle + 80 + Math.random() * 200;
         } else {
-            // Right side player - send to left side (more consistent targeting)
-            targetX = courtMiddle - 250 + Math.random() * 150;
+            // Right side player - send to left side  
+            targetX = courtMiddle - 280 + Math.random() * 200;
         }
         
-        targetY = this.groundY - 80; // Lower, more hittable landing
+        // Target height based on hit type
+        switch(hitType) {
+            case 'spike':
+                targetY = this.groundY - 50; // Lower, faster
+                break;
+            case 'set':
+                targetY = this.groundY - 120; // Higher, softer
+                break;
+            default: // bump
+                targetY = this.groundY - 80; // Medium height
+        }
         
-        // Calculate reliable volleyball arc
+        // Calculate satisfying volleyball trajectory
         const horizontalDistance = targetX - ballCenterX;
         const verticalDistance = targetY - ballCenterY;
         
-        // Shorter, more manageable flight time for better rallies
-        const flightTime = 1.2 + Math.random() * 0.3; // 1.2-1.5 seconds
+        // Adjust flight time based on hit type
+        let flightTime;
+        switch(hitType) {
+            case 'spike':
+                flightTime = 0.8 + Math.random() * 0.2; // Fast spike
+                break;
+            case 'set':
+                flightTime = 1.4 + Math.random() * 0.3; // Slow, high set
+                break;
+            default:
+                flightTime = 1.1 + Math.random() * 0.2; // Normal bump
+        }
         
-        // Calculate velocities for consistent, hittable arc
+        // Calculate velocities with proper volleyball arc
         this.velocityX = horizontalDistance / flightTime;
         
-        // Lower arc height for easier hitting
-        const peakHeight = 180; // Lower volleyball arc
+        // Arc height based on hit type
+        let peakHeight;
+        switch(hitType) {
+            case 'spike':
+                peakHeight = 100; // Low, aggressive
+                break;
+            case 'set':
+                peakHeight = 250; // High, floaty
+                break;
+            default:
+                peakHeight = 180; // Normal arc
+        }
+        
         this.velocityY = -(peakHeight + this.gravity * flightTime * flightTime * 0.5) / flightTime;
         
-        // Add slight randomness for realism
-        this.velocityX += (Math.random() - 0.5) * 40;
-        this.velocityY += (Math.random() - 0.5) * 30;
+        // Add character direction influence for more control
+        const characterDirection = character.velocityX;
+        this.velocityX += characterDirection * 0.3; // Add some player influence
+        
+        // Add slight variation for realism but keep it predictable
+        this.velocityX += (Math.random() - 0.5) * 20;
+        this.velocityY += (Math.random() - 0.5) * 15;
         
         this.isMoving = true;
         this.isInAir = true;
-        this.targetScale = 1.4;
         
-        // Nice volleyball rotation
-        this.rotationSpeed = this.velocityX * 0.008;
+        // Visual feedback based on hit type
+        switch(hitType) {
+            case 'spike':
+                this.targetScale = 1.6; // Dramatic spike
+                this.rotationSpeed = this.velocityX * 0.015; // Fast spin
+                break;
+            case 'set':
+                this.targetScale = 1.2; // Gentle set
+                this.rotationSpeed = this.velocityX * 0.005; // Slow spin
+                break;
+            default:
+                this.targetScale = 1.4; // Normal hit
+                this.rotationSpeed = this.velocityX * 0.01; // Medium spin
+        }
         
-        // Clear trail
+        // Clear trail for fresh trajectory
         this.trail = [];
         
+        // Store hit type for animation feedback
+        this.lastHitType = hitType;
+        
         return true;
+    }
+    
+    // Determine hit type based on ball position and character state
+    determineHitType(character, distance) {
+        const ballCenterY = this.y + this.height / 2;
+        const charCenterY = character.getCenterY();
+        const relativeHeight = ballCenterY - charCenterY;
+        
+        // Check if character is jumping (for spikes)
+        const isJumping = character.velocityY < -100;
+        
+        if (isJumping && relativeHeight < -20) {
+            return 'spike'; // Jumping and ball is above
+        } else if (relativeHeight < -30) {
+            return 'set'; // Ball is high, gentle set
+        } else {
+            return 'bump'; // Normal bump/pass
+        }
     }
     
     passToTarget(targetX, targetY, arc = 0.8) {

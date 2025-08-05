@@ -17,6 +17,11 @@ class GameEngine {
         this.imagesLoaded = 0;
         this.totalImages = 0;
         
+        // Screen effects
+        this.shakeIntensity = 0;
+        this.shakeDuration = 0;
+        this.shakeTimer = 0;
+        
         // Input handling
         this.mouse = { x: 0, y: 0, clicked: false };
         this.keys = {};
@@ -115,6 +120,14 @@ class GameEngine {
     }
     
     update(deltaTime) {
+        // Update screen shake
+        if (this.shakeTimer > 0) {
+            this.shakeTimer -= deltaTime;
+            if (this.shakeTimer <= 0) {
+                this.shakeIntensity = 0;
+            }
+        }
+        
         this.gameObjects.forEach(obj => {
             if (obj.update) {
                 obj.update(deltaTime);
@@ -132,6 +145,14 @@ class GameEngine {
         // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // Apply screen shake
+        if (this.shakeIntensity > 0) {
+            const shakeX = (Math.random() - 0.5) * this.shakeIntensity;
+            const shakeY = (Math.random() - 0.5) * this.shakeIntensity;
+            this.ctx.save();
+            this.ctx.translate(shakeX, shakeY);
+        }
+        
         // Draw background
         this.drawBackground();
         
@@ -142,6 +163,11 @@ class GameEngine {
                 obj.render(this.ctx);
             }
         });
+        
+        // Restore canvas if shake was applied
+        if (this.shakeIntensity > 0) {
+            this.ctx.restore();
+        }
     }
     
     drawBackground() {
@@ -202,6 +228,13 @@ class GameEngine {
     
     stop() {
         this.isRunning = false;
+    }
+    
+    // Screen shake effect for impact feedback
+    shake(intensity = 5, duration = 200) {
+        this.shakeIntensity = intensity;
+        this.shakeDuration = duration;
+        this.shakeTimer = duration;
     }
 }
 
