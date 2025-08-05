@@ -118,12 +118,15 @@ class BeachVolleyballGame {
             }
         };
         
-        // Set up NPC behavior for player2
+        // Set up enhanced NPC behavior for player2
         this.player2.setInteractable(false);
         this.player2.isNPC = true;
         this.player2.npcState = 'ready';
         this.player2.npcTimer = 0;
-        this.player2.moveSpeed = 300;
+        this.player2.moveSpeed = 450; // Faster movement
+        this.player2.reactionTime = 150; // Quick reactions
+        this.player2.anticipation = 0; // Predictive movement
+        this.player2.skillLevel = 0.8; // High skill level
     }
     
     canPlayerHit(player) {
@@ -149,17 +152,23 @@ class BeachVolleyballGame {
             
             console.log(`${side} hit! Rally continues - passes: ${this.passCount}`);
             
-            // Trigger NPC reaction
+            // Enhanced NPC reaction for smoother gameplay
             if (side === 'player') {
-                this.startNPCReaction();
+                this.startAdvancedNPCReaction();
+            } else {
+                // When NPC hits, give player a moment to get ready
+                setTimeout(() => {
+                    this.gameState = 'ready';
+                }, 200);
             }
         }
     }
     
-    startNPCReaction() {
+    startAdvancedNPCReaction() {
         this.player2.npcState = 'tracking';
         this.player2.npcTimer = 0;
-        this.player2.reactionDelay = 300 + Math.random() * 400; // Quick reaction
+        this.player2.reactionTime = 100 + Math.random() * 150; // Very quick reactions
+        this.player2.anticipation = Math.random() * 0.3; // Add some prediction
     }
     
     updateNPC(deltaTime) {
@@ -170,41 +179,71 @@ class BeachVolleyballGame {
         const courtMiddle = this.engine.canvas.width / 2;
         const ballX = this.volleyball.x + this.volleyball.width / 2;
         const ballY = this.volleyball.y + this.volleyball.height / 2;
+        const npcX = this.player2.getCenterX();
+        
+        // Enhanced ball tracking and prediction
+        const ballVelX = this.volleyball.velocityX;
+        const ballVelY = this.volleyball.velocityY;
+        const gravity = this.volleyball.gravity;
+        
+        // Predict where ball will be in the future
+        const predictionTime = 0.5; // Look ahead 0.5 seconds
+        const futureX = ballX + ballVelX * predictionTime;
+        const futureY = ballY + ballVelY * predictionTime + 0.5 * gravity * predictionTime * predictionTime;
         
         switch (this.player2.npcState) {
             case 'tracking':
-                // Watch the ball and start moving when it's coming
-                if (this.player2.npcTimer > this.player2.reactionDelay) {
-                    if (ballX > courtMiddle - 100 && this.volleyball.velocityX > 0) {
-                        this.player2.npcState = 'moving';
+                // Advanced tracking with anticipation
+                if (this.player2.npcTimer > this.player2.reactionTime) {
+                    // Check if ball is coming to NPC's side
+                    if (ballX > courtMiddle - 80 && ballVelX > 0) {
+                        this.player2.npcState = 'positioning';
+                        this.player2.targetX = this.calculateOptimalPosition(futureX, futureY);
                     }
                 }
                 break;
                 
-            case 'moving':
-                // Move to intercept the ball
-                const targetX = this.predictBallPosition();
-                const npcX = this.player2.getCenterX();
-                const distanceToTarget = targetX - npcX;
+            case 'positioning':
+                // Smart positioning with prediction
+                const distanceToTarget = this.player2.targetX - npcX;
                 
-                if (Math.abs(distanceToTarget) > 30) {
-                    this.player2.velocityX = Math.sign(distanceToTarget) * this.player2.moveSpeed;
+                if (Math.abs(distanceToTarget) > 20) {
+                    // Move toward optimal position
+                    const moveDirection = Math.sign(distanceToTarget);
+                    this.player2.velocityX = moveDirection * this.player2.moveSpeed;
+                    
+                    // Dynamic speed adjustment based on urgency
+                    const ballDistance = Math.abs(ballX - npcX);
+                    if (ballDistance < 200) {
+                        this.player2.velocityX *= 1.5; // Speed up when ball is close
+                    }
                 } else {
-                    this.player2.velocityX *= 0.7; // Slow down when close
+                    this.player2.velocityX *= 0.6; // Smooth deceleration
                     this.player2.npcState = 'ready';
                 }
+                
+                // Update target position continuously
+                this.player2.targetX = this.calculateOptimalPosition(futureX, futureY);
                 break;
                 
             case 'ready':
-                // Ready to hit
-                this.player2.velocityX *= 0.8; // Gentle stop
+                // Enhanced ready state with micro-adjustments
+                this.player2.velocityX *= 0.85;
                 
-                if (this.canPlayerHit(this.player2)) {
+                // Fine positioning adjustments
+                const ballDistance = Math.abs(ballX - npcX);
+                if (ballDistance < 150 && ballVelX > 0) {
+                    const adjustment = (ballX - npcX) * 0.3;
+                    this.player2.velocityX += adjustment;
+                }
+                
+                // Check for hit opportunity with better timing
+                if (this.canNPCHit()) {
                     this.npcHitVolleyball();
                 }
                 
-                // Reset if ball goes away or lands
-                if (this.volleyball.isOnGround() || ballX < courtMiddle - 150) {
+                // Reset conditions
+                if (this.volleyball.isOnGround() || ballX < courtMiddle - 150 || ballVelX < -100) {
                     this.player2.npcState = 'waiting';
                     this.rallyInProgress = false;
                     this.gameState = 'ready';
@@ -212,25 +251,59 @@ class BeachVolleyballGame {
                 break;
                 
             case 'waiting':
-                // Just chill and wait
-                this.player2.velocityX *= 0.9;
+                // Return to neutral position
+                this.player2.velocityX *= 0.92;
+                const neutralX = this.engine.canvas.width * 0.75;
+                const distanceToNeutral = neutralX - npcX;
+                
+                if (Math.abs(distanceToNeutral) > 30) {
+                    this.player2.velocityX += Math.sign(distanceToNeutral) * 50;
+                }
                 break;
+        }
+        
+        // Keep NPC in bounds
+        const rightBound = this.engine.canvas.width - this.player2.width - 20;
+        const leftBound = courtMiddle + 20;
+        
+        if (this.player2.x > rightBound) {
+            this.player2.x = rightBound;
+            this.player2.velocityX = Math.min(0, this.player2.velocityX);
+        }
+        if (this.player2.x < leftBound) {
+            this.player2.x = leftBound;
+            this.player2.velocityX = Math.max(0, this.player2.velocityX);
         }
     }
     
-    predictBallPosition() {
-        // Simple prediction where ball will be
-        const ballX = this.volleyball.x + this.volleyball.width / 2;
-        const velX = this.volleyball.velocityX;
+    calculateOptimalPosition(futureX, futureY) {
+        const courtMiddle = this.engine.canvas.width / 2;
+        const rightBound = this.engine.canvas.width - this.player2.width - 50;
+        const leftBound = courtMiddle + 50;
         
-        if (velX > 0) {
-            // Predict where ball will be in 1 second
-            const futureX = ballX + velX * 1.0;
-            return Math.max(this.engine.canvas.width / 2 + 50, 
-                   Math.min(this.engine.canvas.width - 180, futureX));
+        // Calculate where the ball will likely be when it reaches hitting height
+        let optimalX = futureX;
+        
+        // Add some strategic positioning
+        if (this.volleyball.velocityX > 300) {
+            optimalX += 30; // Position slightly ahead for fast balls
         }
         
-        return this.player2.x; // Stay put
+        // Keep within bounds
+        optimalX = Math.max(leftBound, Math.min(rightBound, optimalX));
+        
+        return optimalX;
+    }
+    
+    canNPCHit() {
+        const ballDistance = this.volleyball.isNearCharacter(this.player2, 140);
+        const ballHeight = this.volleyball.y + this.volleyball.height;
+        const courtHeight = this.groundLevel;
+        const ballNotTooHigh = ballHeight > courtHeight - 250;
+        const ballNotTooFast = Math.abs(this.volleyball.velocityY) < 700;
+        const ballInRange = Math.abs(this.volleyball.velocityX) > 50; // Ball must be moving
+        
+        return ballDistance && ballNotTooHigh && ballNotTooFast && ballInRange;
     }
     
     npcHitVolleyball() {

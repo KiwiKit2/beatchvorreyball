@@ -149,62 +149,43 @@ class GameEngine {
         if (bgImage) {
             this.ctx.drawImage(bgImage, 0, 0, this.canvas.width, this.canvas.height);
         } else {
-            // Beautiful beach volleyball atmosphere
+            // Clean, beautiful beach volleyball atmosphere
             const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
             gradient.addColorStop(0, '#87CEEB');    // Sky blue at top
-            gradient.addColorStop(0.5, '#B0E0E6');  // Powder blue 
+            gradient.addColorStop(0.4, '#B0E0E6');  // Powder blue 
             gradient.addColorStop(0.7, '#F0E68C');  // Khaki for horizon
             gradient.addColorStop(1, '#DEB887');    // Sandy beach
             this.ctx.fillStyle = gradient;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             
-            // Add some subtle clouds
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            // Add some very subtle clouds for atmosphere
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
             this.ctx.beginPath();
-            this.ctx.arc(this.canvas.width * 0.2, this.canvas.height * 0.15, 50, 0, Math.PI * 2);
-            this.ctx.arc(this.canvas.width * 0.8, this.canvas.height * 0.25, 40, 0, Math.PI * 2);
+            this.ctx.arc(this.canvas.width * 0.15, this.canvas.height * 0.12, 35, 0, Math.PI * 2);
+            this.ctx.arc(this.canvas.width * 0.85, this.canvas.height * 0.18, 28, 0, Math.PI * 2);
             this.ctx.fill();
         }
         
-        // Draw simple volleyball net
-        this.drawSimpleNet();
+        // Clean court - no distracting net
+        this.drawCleanCourt();
     }
     
-    drawSimpleNet() {
+    drawCleanCourt() {
+        // Just a subtle ground line for reference
         const ctx = this.ctx;
-        const courtY = this.canvas.height * 0.75; // Higher ground level
-        const netX = this.canvas.width / 2;
-        const netHeight = 140;
+        const courtY = this.canvas.height * 0.75;
         
         ctx.save();
-        
-        // Draw net post
-        ctx.fillStyle = '#8B4513';
-        ctx.fillRect(netX - 8, courtY - netHeight, 16, netHeight + 20);
-        
-        // Draw simple net
-        ctx.strokeStyle = '#E8E8E8';
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.moveTo(netX - 60, courtY - netHeight + 20);
-        ctx.lineTo(netX + 60, courtY - netHeight + 20);
-        ctx.stroke();
-        
-        // Net mesh - simple and clean
-        ctx.strokeStyle = 'rgba(200, 200, 200, 0.6)';
+        ctx.strokeStyle = 'rgba(139, 69, 19, 0.2)';
         ctx.lineWidth = 2;
-        
-        // Just a few horizontal lines
-        for (let i = 1; i < 6; i++) {
-            const y = courtY - netHeight + 20 + (i * 20);
-            ctx.beginPath();
-            ctx.moveTo(netX - 50, y);
-            ctx.lineTo(netX + 50, y);
-            ctx.stroke();
-        }
-        
+        ctx.beginPath();
+        ctx.moveTo(0, courtY);
+        ctx.lineTo(this.canvas.width, courtY);
+        ctx.stroke();
         ctx.restore();
     }
+    
+
     
     gameLoop(currentTime) {
         this.deltaTime = currentTime - this.lastTime;

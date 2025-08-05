@@ -9,14 +9,16 @@ class Character {
         this.isPlayer = isPlayer;
         this.zIndex = 2;
         
-        // Movement properties
+        // Movement properties - Enhanced for better feel
         this.velocityX = 0;
         this.velocityY = 0;
-        this.speed = 300; // pixels per second
-        this.jumpPower = -600;
+        this.speed = 420; // Faster movement
+        this.jumpPower = -650; // Stronger jump
         this.gravity = 1800;
         this.onGround = true;
         this.groundY = 0;
+        this.acceleration = 1200; // Quick acceleration
+        this.friction = 0.88; // Better stopping
         
         // Animation properties
         this.scale = 1;
