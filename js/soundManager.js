@@ -184,6 +184,14 @@ class SoundManager {
                 this.playSound('donQsays', {
                     volume: 0.8
                 });
+            },
+            
+            // Rally ended sound
+            rallyEnd: () => {
+                console.log("Attempting to play awh sound...");
+                this.playSound('awh', {
+                    volume: 0.9
+                });
             }
         };
     }

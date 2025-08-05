@@ -2,8 +2,15 @@
 class BeachVolleyballGame {
     constructor() {
         this.engine = new GameEngine('gameCanvas');
-        this.gameState = 'loading'; // loading, ready, playing, paused
+        this.gameState = 'menu'; // menu, loading, ready, playing, paused
         this.soundPresets = null;
+        
+        // Player configuration from menu
+        this.playerConfig = {
+            character: 'donQ',
+            mode: 'vs-npc',
+            playerName: 'Player'
+        };
         
         // Game objects
         this.player1 = null;
@@ -18,8 +25,18 @@ class BeachVolleyballGame {
         // Animation timing
         this.lastPassTime = 0;
         this.passDelay = 1500; // Delay between AI passes
+        this.rallyJustEnded = false; // Track if rally just ended
         
-        this.initialize();
+        // Don't initialize immediately - wait for menu
+        this.setupMenuIntegration();
+    }
+    
+    setupMenuIntegration() {
+        // Register with menu manager to receive start game callback
+        menuManager.onGameStart((config) => {
+            this.playerConfig = config;
+            this.initialize();
+        });
     }
     
     async initialize() {
@@ -58,6 +75,8 @@ class BeachVolleyballGame {
         const imagesToLoad = [
             { src: 'images/BeachBG.png', key: 'background' },
             { src: 'images/donQ.png', key: 'donQ' },
+            { src: 'images/ryoshu.png', key: 'ryoshu' },
+            { src: 'images/ideal.png', key: 'ideal' },
             { src: 'images/volleyball.png', key: 'volleyball' }
         ];
         
@@ -74,19 +93,31 @@ class BeachVolleyballGame {
                 src: 'sounds/hit.mp3', 
                 key: 'hit',
                 options: { category: 'sfx', volume: 0.7 }
+            },
+            { 
+                src: 'sounds/awh.mp3', 
+                key: 'awh',
+                options: { category: 'voice', volume: 0.9 }
             }
         ];
         
         await soundManager.loadAllSounds(soundsToLoad);
+        console.log("All sounds loaded:", soundManager.sounds.keys());
     }
     
     createGameObjects() {
-        // Calculate ground level lower on screen for better feel
-        this.groundLevel = (this.engine.canvas.height * 0.82); // Much lower position
+        // Prevent duplicate creation
+        if (this.player1 || this.player2 || this.volleyball) {
+            console.log('Game objects already exist, skipping creation');
+            return;
+        }
         
-        // Create bigger player characters positioned lower
-        this.player1 = new Character(120, this.groundLevel - 140, 'donQ', true);
-        this.player2 = new Character(this.engine.canvas.width - 260, this.groundLevel - 140, 'donQ', false);
+        // Calculate ground level even lower on screen for final polish
+        this.groundLevel = (this.engine.canvas.height * 0.88); // Much lower position
+        
+        // Create player characters with selected character type
+        this.player1 = new Character(120, this.groundLevel - 180, this.playerConfig.character, true);
+        this.player2 = new Character(this.engine.canvas.width - 300, this.groundLevel - 180, this.playerConfig.character, false);
         
         // Set ground level for characters
         this.player1.setGroundLevel(this.groundLevel);
@@ -95,7 +126,7 @@ class BeachVolleyballGame {
         // Create volleyball in starting position
         this.volleyball = new Volleyball(
             this.player1.getCenterX() + 50,
-            this.groundLevel - 120 // Start volleyball a bit higher
+            this.groundLevel - 140 // Start volleyball higher for larger characters
         );
         this.volleyball.setGroundLevel(this.groundLevel);
         
@@ -103,6 +134,8 @@ class BeachVolleyballGame {
         this.engine.addGameObject(this.player1);
         this.engine.addGameObject(this.player2);
         this.engine.addGameObject(this.volleyball);
+        
+        console.log('Created game objects:', this.engine.gameObjects.length);
     }
     
     setupGameLogic() {
@@ -131,11 +164,11 @@ class BeachVolleyballGame {
     }
     
     canPlayerHit(player) {
-        // Much more forgiving hit detection for better gameplay
-        const distance = this.volleyball.isNearCharacter(player, 200); // Larger hit zone
+        // Adjusted hit detection for larger characters
+        const distance = this.volleyball.isNearCharacter(player, 240); // Larger hit zone for bigger characters
         const ballHeight = this.volleyball.y + this.volleyball.height;
         const courtHeight = this.groundLevel;
-        const ballInReachableHeight = ballHeight > courtHeight - 350; // Higher reach
+        const ballInReachableHeight = ballHeight > courtHeight - 400; // Higher reach for larger characters
         const notMovingTooFast = Math.abs(this.volleyball.velocityY) < 800;
         
         // Always allow hitting when ball is near - no side restrictions for better flow
@@ -259,9 +292,7 @@ class BeachVolleyballGame {
                 if (this.volleyball.isOnGround() || 
                     ballX < courtMiddle - 200 || 
                     (ballVelX < -150 && ballDistance > 300)) {
-                    this.player2.npcState = 'waiting';
-                    this.rallyInProgress = false;
-                    this.gameState = 'ready';
+                    this.endRally();
                 }
                 break;
                 
@@ -317,14 +348,38 @@ class BeachVolleyballGame {
     }
     
     canNPCHit() {
-        const ballDistance = this.volleyball.isNearCharacter(this.player2, 180); // More forgiving
+        const ballDistance = this.volleyball.isNearCharacter(this.player2, 220); // Adjusted for larger NPC
         const ballHeight = this.volleyball.y + this.volleyball.height;
         const courtHeight = this.groundLevel;
-        const ballNotTooHigh = ballHeight > courtHeight - 300;
+        const ballNotTooHigh = ballHeight > courtHeight - 350;
         const ballNotTooFast = Math.abs(this.volleyball.velocityY) < 800;
         const ballIsMoving = Math.abs(this.volleyball.velocityX) > 20; // Ball must be moving slightly
         
         return ballDistance && ballNotTooHigh && ballNotTooFast && ballIsMoving;
+    }
+    
+    endRally() {
+        console.log(`Rally ending - Pass count: ${this.passCount}, Rally just ended: ${this.rallyJustEnded}`);
+        
+        // Check if we had a meaningful rally (3+ passes)
+        if (this.passCount >= 3 && !this.rallyJustEnded) {
+            console.log("Playing awh sound - rally ended!");
+            this.soundPresets.rallyEnd();
+            this.rallyJustEnded = true;
+            console.log(`Rally ended! Total passes: ${this.passCount}`);
+            
+            // Reset the flag after a delay
+            setTimeout(() => {
+                this.rallyJustEnded = false;
+                console.log("Rally just ended flag reset");
+            }, 2000);
+        }
+        
+        // Reset game state
+        this.player2.npcState = 'waiting';
+        this.rallyInProgress = false;
+        this.gameState = 'ready';
+        this.passCount = 0; // Reset pass count for next rally
     }
     
     npcHitVolleyball() {
@@ -416,24 +471,40 @@ class BeachVolleyballGame {
         // Update NPC behavior
         this.updateNPC(deltaTime);
         
+        // Check for rally end conditions globally
+        this.checkRallyEnd();
+        
         // Check if we need to update UI or game state
         this.updateUI();
     }
     
+    checkRallyEnd() {
+        // Global check for rally end - covers all scenarios
+        if (this.rallyInProgress && this.volleyball.isOnGround()) {
+            console.log("Global rally end check triggered - ball hit ground");
+            this.endRally();
+        }
+    }
+    
     updateUI() {
-        // Update any UI elements (could be extended for score, etc.)
+        // Update HUD title with selected character
         const hudElement = document.querySelector('.hud');
-        if (hudElement) {
+        if (hudElement && this.player1) {
+            const titleDiv = hudElement.children[0];
+            if (titleDiv) {
+                titleDiv.textContent = `Beach Volleyball with ${this.player1.characterData.name}`;
+            }
+            
             const infoDiv = hudElement.children[3] || hudElement.appendChild(document.createElement('div'));
             
             if (this.gameState === 'loading') {
                 infoDiv.textContent = 'Loading volleyball court...';
             } else if (this.gameState === 'serving') {
-                infoDiv.textContent = `Ready to serve! Get close to the ball and press Space. Passes: ${this.passCount}`;
+                infoDiv.textContent = `${this.playerConfig.playerName}, ready to serve! Get close to the ball and press Space. Passes: ${this.passCount}`;
             } else if (this.gameState === 'ready') {
-                infoDiv.textContent = `Volleyball ready! Move and press Space to bump/set. Passes: ${this.passCount}`;
+                infoDiv.textContent = `${this.playerConfig.playerName} - Move and press Space to bump/set. Passes: ${this.passCount}`;
             } else if (this.gameState === 'playing') {
-                infoDiv.textContent = `Volleyball in play! Passes: ${this.passCount}`;
+                infoDiv.textContent = `${this.playerConfig.playerName} - Rally in progress! Passes: ${this.passCount}`;
             }
         }
     }
@@ -503,28 +574,113 @@ class BeachVolleyballGame {
 
 // Initialize and start the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    const game = new BeachVolleyballGame();
+    // Initialize the menu manager first
+    const menuManager = new MenuManager();
     
-    // Make game accessible globally for debugging
-    window.game = game;
+    // Set up the game start callback
+    menuManager.gameStartCallback = (config) => {
+        startBeachVolleyball(config);
+    };
     
-    // Add keyboard shortcuts for future features
-    document.addEventListener('keydown', (e) => {
-        switch(e.key) {
-            case 'r':
-            case 'R':
-                game.resetGame();
-                break;
-            case 'm':
-            case 'M':
-                soundManager.setMuted(!soundManager.muted);
-                break;
-        }
-    });
+    // Start background rendering immediately
+    initializeGameBackground();
     
-    console.log('🏐 Limbus Company Beach Volleyball Game Started! 🏐');
-    console.log('Controls:');
-    console.log('- Click on left Don Quixote to pass volleyball');
-    console.log('- Press R to reset game');
-    console.log('- Press M to toggle mute');
+    console.log('🏐 Beach Volleyball Game Loaded! 🏐');
 });
+
+// Function to initialize just the background
+function initializeGameBackground() {
+    const gameEngine = new GameEngine('gameCanvas');
+    
+    // Load the background image
+    const bgImage = new Image();
+    bgImage.onload = () => {
+        gameEngine.images.set('background', bgImage);
+        
+        let backgroundRunning = true;
+        
+        // Start the background rendering loop
+        function renderBackground() {
+            if (!backgroundRunning) return; // Stop if game has started
+            
+            gameEngine.ctx.clearRect(0, 0, gameEngine.canvas.width, gameEngine.canvas.height);
+            gameEngine.drawBackground();
+            requestAnimationFrame(renderBackground);
+        }
+        
+        renderBackground();
+        
+        // Stop background when game starts
+        window.stopBackgroundLoop = () => {
+            backgroundRunning = false;
+        };
+    };
+    bgImage.src = 'images/BeachBG.png';
+}
+
+// Function called by menu to start the actual game
+function startBeachVolleyball(config) {
+    console.log('startBeachVolleyball called with:', config);
+    
+    // Stop any existing game first
+    if (window.game && window.game.engine) {
+        window.game.engine.stop();
+        window.game = null;
+    }
+    
+    // Stop background loop
+    if (window.stopBackgroundLoop) {
+        window.stopBackgroundLoop();
+    }
+    
+    try {
+        const game = new BeachVolleyballGame();
+        game.playerConfig = config;
+        
+        // Clear any existing game objects from the engine
+        game.engine.gameObjects = [];
+        
+        // Initialize the full game
+        game.initialize().then(() => {
+            console.log('Game initialization complete');
+            game.createGameObjects();
+            game.setupGameLogic();
+            game.engine.start();
+            console.log('Game started successfully with config:', config);
+        }).catch(error => {
+            console.error('Error starting game:', error);
+            // Show error in HUD
+            const hudElement = document.querySelector('.hud');
+            if (hudElement) {
+                const errorDiv = document.createElement('div');
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.style.color = 'red';
+                hudElement.appendChild(errorDiv);
+            }
+        });
+        
+        // Make game accessible globally
+        window.game = game;
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'r':
+                case 'R':
+                    if (game.resetGame) game.resetGame();
+                    break;
+                case 'm':
+                case 'M':
+                    if (soundManager && soundManager.setMuted) {
+                        soundManager.setMuted(!soundManager.muted);
+                    }
+                    break;
+            }
+        });
+    } catch (error) {
+        console.error('Error in startBeachVolleyball:', error);
+    }
+}
+
+// Make the function globally accessible
+window.startBeachVolleyball = startBeachVolleyball;

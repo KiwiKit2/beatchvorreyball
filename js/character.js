@@ -3,8 +3,8 @@ class Character {
     constructor(x, y, characterType = 'donQ', isPlayer = true) {
         this.x = x;
         this.y = y;
-        this.width = 140; // Much bigger characters
-        this.height = 140;
+        this.width = 180; // Even bigger characters for final polish
+        this.height = 180;
         this.characterType = characterType;
         this.isPlayer = isPlayer;
         this.zIndex = 2;
@@ -26,6 +26,7 @@ class Character {
         this.rotation = 0;
         this.isAnimating = false;
         this.animationTime = 0;
+        this.animationOffsetY = 0; // For smoother hit animations
         
         // Interaction properties
         this.isHovered = false;
@@ -43,6 +44,20 @@ class Character {
                 idleAnimation: 'default',
                 hitAnimation: 'excited',
                 color: '#FFD700'
+            },
+            'ryoshu': {
+                imageKey: 'ryoshu',
+                name: 'Ryoshu',
+                idleAnimation: 'default',
+                hitAnimation: 'excited',
+                color: '#DC143C'
+            },
+            'ideal': {
+                imageKey: 'ideal',
+                name: 'Ideal',
+                idleAnimation: 'default',
+                hitAnimation: 'excited',
+                color: '#4169E1'
             }
             // Future characters can be added here:
             // 'sinclair': { ... },
@@ -88,24 +103,37 @@ class Character {
         if (this.isAnimating) {
             this.animationTime += deltaTime;
             
-            // Bounce animation when hitting volleyball
-            if (this.animationTime < 500) {
-                const progress = this.animationTime / 500;
-                const bounceProgress = Math.sin(progress * Math.PI);
-                this.scale = lerp(1, 1.3, bounceProgress);
-                this.rotation = lerp(0, 0.2, bounceProgress) * (Math.random() > 0.5 ? 1 : -1);
-            } else {
-                // Return to normal
-                this.scale = lerp(this.scale, 1, deltaTime * 0.005);
-                this.rotation = lerp(this.rotation, 0, deltaTime * 0.005);
+            // Natural volleyball hit animation
+            if (this.animationTime < 300) {
+                // Quick upward motion like jumping to hit
+                const progress = this.animationTime / 300;
+                const jumpProgress = Math.sin(progress * Math.PI);
                 
-                if (Math.abs(this.scale - 1) < 0.01 && Math.abs(this.rotation) < 0.01) {
-                    this.isAnimating = false;
-                    this.animationTime = 0;
-                    this.scale = 1;
-                    this.rotation = 0;
-                }
+                // Slight upward movement and forward lean
+                this.animationOffsetY = -jumpProgress * 15; // Small upward movement
+                this.scale = lerp(1, 1.15, jumpProgress); // Slight scale increase
+                
+                // Subtle forward lean for hitting motion
+                this.rotation = jumpProgress * 0.1;
+            } else if (this.animationTime < 600) {
+                // Landing and return to normal
+                const returnProgress = (this.animationTime - 300) / 300;
+                const easeOut = 1 - Math.pow(1 - returnProgress, 3);
+                
+                this.animationOffsetY = lerp(-15, 0, easeOut);
+                this.scale = lerp(1.15, 1, easeOut);
+                this.rotation = lerp(0.1, 0, easeOut);
+            } else {
+                // Animation complete
+                this.isAnimating = false;
+                this.animationTime = 0;
+                this.animationOffsetY = 0;
+                this.scale = 1;
+                this.rotation = 0;
             }
+        } else {
+            // Ensure animation values are reset
+            this.animationOffsetY = this.animationOffsetY || 0;
         }
     }
     
@@ -148,8 +176,9 @@ class Character {
         
         ctx.save();
         
-        // Apply transformations
-        ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+        // Apply transformations with animation offset
+        const renderY = this.y + (this.animationOffsetY || 0);
+        ctx.translate(this.x + this.width / 2, renderY + this.height / 2);
         ctx.scale(this.scale, this.scale);
         ctx.rotate(this.rotation);
         

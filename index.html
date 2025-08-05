@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Limbus Company Beach Volleyball</title>
+    <title>Limbus Company Beach Vol            <h1>Beach Volleyball</h1>eyball</title>
     <style>
         body {
             margin: 0;
@@ -27,16 +27,200 @@
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
             z-index: 10;
         }
+        
+        /* Menu Styles - Truly Transparent */
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            background: transparent;
+        }
+        
+        .menu-container {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 8px;
+            padding: 30px;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .menu-container h1 {
+            margin: 0 0 25px 0;
+            font-size: 28px;
+            font-weight: normal;
+        }
+        
+        .menu-section {
+            margin-bottom: 20px;
+        }
+        
+        .menu-section h2 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: normal;
+            opacity: 0.8;
+        }
+        
+        .nickname-input input {
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            width: 180px;
+            text-align: center;
+        }
+        
+        .nickname-input input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .character-grid {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        
+        .character-option {
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .character-option:hover:not(.coming-soon) {
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .character-option.selected {
+            border-color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .character-option.coming-soon {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .character-option img {
+            width: 50px;
+            height: 50px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        
+        .character-option span {
+            font-size: 12px;
+            display: block;
+        }
+        
+        .game-mode-buttons {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .mode-button {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            background: rgba(0, 0, 0, 0.1);
+            color: white;
+        }
+        
+        .mode-button:hover:not(.coming-soon) {
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .mode-button.coming-soon {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .start-button {
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            padding: 14px 40px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .start-button:hover {
+            border-color: white;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Hidden class */
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="hud">
-        <div>🏐 Beach Volleyball with Don Quixote 🏐</div>
+        <div>Beach Volleyball with Don Quixote</div>
         <div>Arrow Keys: Move | Space: Bump/Set/Spike</div>
         <div>R: Reset | M: Mute</div>
     </div>
+    
+    <!-- Game Menu -->
+    <div id="gameMenu" class="menu-overlay">
+        <div class="menu-container">
+            <h1>� Beach Volleyball</h1>
+            
+            <div class="menu-section">
+                <h2>Player Name</h2>
+                <input type="text" id="playerName" placeholder="Enter your name" maxlength="15" value="Player">
+            </div>
+            
+            <div class="menu-section">
+                <h2>Character</h2>
+                <div class="character-grid">
+                    <div class="character-option selected" data-character="donQ">
+                        <img src="images/donQ.png" alt="Don Quixote">
+                        <span>Don Quixote</span>
+                    </div>
+                    <div class="character-option" data-character="ryoshu">
+                        <img src="images/ryoshu.png" alt="Ryoshu">
+                        <span>Ryoshu</span>
+                    </div>
+                    <div class="character-option" data-character="ideal">
+                        <img src="images/ideal.png" alt="Ideal">
+                        <span>Ideal</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="menu-section">
+                <h2>Game Mode</h2>
+                <div class="game-mode-buttons">
+                    <button class="mode-button" data-mode="vs-npc">VS Computer</button>
+                    <button class="mode-button coming-soon" data-mode="vs-player">VS Player (WIP)</button>
+                </div>
+            </div>
+            
+            <button id="startGameBtn" class="start-button">Start Game</button>
+        </div>
+    </div>
+    
     <canvas id="gameCanvas"></canvas>
     
+    <script src="js/menuManager.js"></script>
     <script src="js/gameEngine.js"></script>
     <script src="js/character.js"></script>
     <script src="js/volleyball.js"></script>

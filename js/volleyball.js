@@ -216,8 +216,8 @@ class Volleyball {
         
         const distance = Math.sqrt((ballCenterX - charCenterX) ** 2 + (ballCenterY - charCenterY) ** 2);
         
-        // Much more forgiving hit detection
-        if (distance > 200) return false;
+        // Much more forgiving hit detection for larger characters
+        if (distance > 240) return false;
         
         // Determine which side and create reliable rally pass
         const courtMiddle = this.engine?.canvas.width / 2 || 400;
