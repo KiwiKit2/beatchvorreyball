@@ -14,7 +14,7 @@ class GameEngine {
         this.targetFPS = 60;
         this.frameTime = 1000 / this.targetFPS;
         this.accumulator = 0;
-        this.maxDeltaTime = 33.33; // Cap at 30fps minimum
+        this.maxDeltaTime = 16.67; // Cap at 60fps minimum for smoother experience
         
         // Canvas optimization
         this.ctx.imageSmoothingEnabled = true;
@@ -240,17 +240,9 @@ class GameEngine {
             this.lastFpsTime = currentTime;
         }
         
-        // Fixed timestep with accumulator for smoother physics
-        this.accumulator += this.deltaTime;
-        
-        while (this.accumulator >= this.frameTime) {
-            this.update(this.frameTime);
-            this.accumulator -= this.frameTime;
-        }
-        
-        // Render with interpolation factor
-        const interpolation = this.accumulator / this.frameTime;
-        this.render(interpolation);
+        // Simplified update - no accumulator for smoother feel
+        this.update(this.deltaTime);
+        this.render();
         
         if (this.isRunning) {
             requestAnimationFrame((time) => this.gameLoop(time));

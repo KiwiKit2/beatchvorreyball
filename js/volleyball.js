@@ -10,10 +10,10 @@ class Volleyball {
         // Physics properties - tuned for smooth gameplay
         this.velocityX = 0;
         this.velocityY = 0;
-        this.gravity = 800; // Slightly reduced for smoother arcs
-        this.bounce = 0.35; // Increased bounce for more lively feel
-        this.friction = 0.92; // Reduced friction for smoother movement
-        this.airResistance = 0.999; // Less air resistance for smoother flight
+        this.gravity = 900; // Slightly higher for more responsive feel
+        this.bounce = 0.4; // Good bounce for gameplay
+        this.friction = 0.95; // Less friction for smoother movement
+        this.airResistance = 0.9995; // Minimal air resistance for smoothness
         this.isMoving = false;
         
         // Animation properties

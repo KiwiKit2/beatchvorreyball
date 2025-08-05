@@ -34,16 +34,12 @@ class BeachVolleyballGame {
         
         // Performance optimization
         this.lastSyncTime = 0;
-        this.syncInterval = 100; // Sync every 100ms instead of 50ms (10fps sync for less conflicts)
+        this.syncInterval = 33; // Sync every 33ms (30fps sync for smoother feel)
         this.frameCount = 0;
         
-        // Ball authority control for multiplayer
-        this.ballAuthority = null; // 'host' or 'guest' - who controls the ball
-        this.lastBallHitTime = 0;
-        this.ballAuthorityTimeout = 2000; // 2 seconds of authority after hitting
-        
-        // Previous sync state to detect changes
-        this.lastSyncState = null;
+        // Simplified multiplayer sync
+        this.lastLocalHit = 0;
+        this.hitCooldown = 500; // 500ms before accepting remote ball updates after local hit
         
         // Don't initialize immediately - wait for menu
         this.setupMenuIntegration();
@@ -259,20 +255,30 @@ class BeachVolleyballGame {
         multiplayerManager.onGameStateUpdate((gameState) => {
             const currentTime = performance.now();
             
-            // Only apply ball updates if we don't have authority or authority has expired
-            if (gameState.ball && (!this.ballAuthority || (currentTime - this.lastBallHitTime > this.ballAuthorityTimeout))) {
-                // Smooth interpolation for ball position to reduce stutter
-                const lerpFactor = 0.1; // Much lighter interpolation to avoid overriding local physics
+            // Apply ball updates with intelligent filtering
+            if (gameState.ball) {
+                // Only apply remote ball updates if we haven't hit recently
+                const timeSinceLocalHit = currentTime - this.lastLocalHit;
                 
-                this.volleyball.x = lerp(this.volleyball.x, gameState.ball.x, lerpFactor);
-                this.volleyball.y = lerp(this.volleyball.y, gameState.ball.y, lerpFactor);
-                this.volleyball.velocityX = lerp(this.volleyball.velocityX, gameState.ball.velocityX, lerpFactor);
-                this.volleyball.velocityY = lerp(this.volleyball.velocityY, gameState.ball.velocityY, lerpFactor);
-                this.volleyball.isMoving = gameState.ball.isMoving;
+                if (timeSinceLocalHit > this.hitCooldown) {
+                    // Aggressive interpolation for smoother sync
+                    const lerpFactor = 0.6; // Strong interpolation for responsiveness
+                    
+                    this.volleyball.x = lerp(this.volleyball.x, gameState.ball.x, lerpFactor);
+                    this.volleyball.y = lerp(this.volleyball.y, gameState.ball.y, lerpFactor);
+                    this.volleyball.velocityX = lerp(this.volleyball.velocityX, gameState.ball.velocityX, lerpFactor);
+                    this.volleyball.velocityY = lerp(this.volleyball.velocityY, gameState.ball.velocityY, lerpFactor);
+                    this.volleyball.isMoving = gameState.ball.isMoving;
+                } else {
+                    // Light interpolation only for position during hit cooldown
+                    const lightLerp = 0.1;
+                    this.volleyball.x = lerp(this.volleyball.x, gameState.ball.x, lightLerp);
+                    this.volleyball.y = lerp(this.volleyball.y, gameState.ball.y, lightLerp);
+                }
             }
             
             // Smooth interpolation for opponent player position
-            const playerLerpFactor = 0.5; // Slightly more responsive for players
+            const playerLerpFactor = 0.7; // More responsive for players
             
             if (this.isHost && gameState.player2) {
                 this.player2.x = lerp(this.player2.x, gameState.player2.x, playerLerpFactor);
@@ -284,15 +290,6 @@ class BeachVolleyballGame {
                 this.player1.y = lerp(this.player1.y, gameState.player1.y, playerLerpFactor);
                 this.player1.velocityX = lerp(this.player1.velocityX, gameState.player1.velocityX, playerLerpFactor);
                 this.player1.velocityY = lerp(this.player1.velocityY, gameState.player1.velocityY, playerLerpFactor);
-            }
-            
-            // Handle ball authority changes
-            if (gameState.ballAuthority && gameState.ballHitTime) {
-                if (gameState.ballHitTime > this.lastBallHitTime) {
-                    // Opponent has newer ball hit - give them authority
-                    this.ballAuthority = gameState.ballAuthority;
-                    this.lastBallHitTime = gameState.ballHitTime;
-                }
             }
         });
     }
@@ -307,54 +304,34 @@ class BeachVolleyballGame {
         }
         this.lastSyncTime = currentTime;
         
-        const updates = {};
-        
-        // Only sync ball if we have authority or no one has authority
-        if (!this.ballAuthority || 
-            (this.isHost && this.ballAuthority === 'host') || 
-            (!this.isHost && this.ballAuthority === 'guest')) {
-            
-            updates.ball = {
-                x: Math.round(this.volleyball.x * 10) / 10, // Reduce precision for less data
-                y: Math.round(this.volleyball.y * 10) / 10,
-                velocityX: Math.round(this.volleyball.velocityX * 10) / 10,
-                velocityY: Math.round(this.volleyball.velocityY * 10) / 10,
+        const updates = {
+            ball: {
+                x: Math.round(this.volleyball.x),
+                y: Math.round(this.volleyball.y),
+                velocityX: Math.round(this.volleyball.velocityX),
+                velocityY: Math.round(this.volleyball.velocityY),
                 isMoving: this.volleyball.isMoving
-            };
-            
-            // Include authority info
-            if (this.ballAuthority) {
-                updates.ballAuthority = this.ballAuthority;
-                updates.ballHitTime = this.lastBallHitTime;
             }
-        }
+        };
         
         // Sync our player position
         if (this.isHost) {
             updates.player1 = {
-                x: Math.round(this.player1.x * 10) / 10,
-                y: Math.round(this.player1.y * 10) / 10,
-                velocityX: Math.round(this.player1.velocityX * 10) / 10,
-                velocityY: Math.round(this.player1.velocityY * 10) / 10
+                x: Math.round(this.player1.x),
+                y: Math.round(this.player1.y),
+                velocityX: Math.round(this.player1.velocityX),
+                velocityY: Math.round(this.player1.velocityY)
             };
         } else {
             updates.player2 = {
-                x: Math.round(this.player2.x * 10) / 10,
-                y: Math.round(this.player2.y * 10) / 10,
-                velocityX: Math.round(this.player2.velocityX * 10) / 10,
-                velocityY: Math.round(this.player2.velocityY * 10) / 10
+                x: Math.round(this.player2.x),
+                y: Math.round(this.player2.y),
+                velocityX: Math.round(this.player2.velocityX),
+                velocityY: Math.round(this.player2.velocityY)
             };
         }
         
-        // Only send update if there are meaningful changes
-        if (Object.keys(updates).length > 0) {
-            // Check if this update is significantly different from last sync
-            const updateString = JSON.stringify(updates);
-            if (updateString !== this.lastSyncState) {
-                multiplayerManager.updateGameState(updates);
-                this.lastSyncState = updateString;
-            }
-        }
+        multiplayerManager.updateGameState(updates);
     }
     
     tryPlayerHit(player, playerType) {
@@ -374,11 +351,10 @@ class BeachVolleyballGame {
         if (distance < 180) { // Balanced hitting distance - not too far, not too close
             console.log("SIMPLE HIT: Close enough, hitting ball!");
             
-            // Claim ball authority for multiplayer
+            // Mark local hit time for sync filtering
             if (this.isMultiplayer) {
-                this.ballAuthority = this.isHost ? 'host' : 'guest';
-                this.lastBallHitTime = performance.now();
-                console.log(`Ball authority claimed by: ${this.ballAuthority}`);
+                this.lastLocalHit = performance.now();
+                console.log('Local hit registered, filtering remote updates');
             }
             
             // Determine ball direction based on which player hit it
