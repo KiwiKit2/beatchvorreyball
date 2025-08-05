@@ -1,37 +1,50 @@
 # Beach Volleyball Game 🏐
 
-A fun beach volleyball game featuring Don Quixote characters from Limbus Company!
+A polished Limbus Company themed beach volleyball game with smooth physics, AI opponents, and refined gameplay mechanics.
 
-## Features
+## ✨ Features
 
-- **Volleyball Gameplay**: Realistic volleyball physics with arcing ball trajectories
-- **Don Quixote Characters**: Play as Don Quixote characters with custom sprites
-- **Sound Effects**: Immersive audio with hit sounds and character voices
-- **AI Opponent**: Smart NPC that tracks the ball and maintains rallies
-- **Beautiful Visuals**: Gradient beach background with clean volleyball court design
-- **Responsive Controls**: Smooth character movement and jumping mechanics
+- **Character Selection**: Choose from Don Quixote, Ryoshu, or Ideal from the main menu
+- **Realistic Physics**: Smooth volleyball movement with tuned gravity, bounce, and air resistance
+- **Smart AI Opponent**: NPC with ball tracking, strategic positioning, and realistic reactions
+- **Complete Sound System**: Character voices, hit effects, and rally end sounds
+- **Polished Visuals**: Larger sprites (220x220 characters, 65x65 ball) with clean appearance
+- **Rally System**: Pass counting with satisfying "awh" sound when rallies end
+- **Responsive Controls**: Precise hit detection and smooth character movement
 
-## How to Play
+## 🎮 Controls
 
-- **Movement**: Use A/D or Arrow Keys (←/→) to move left and right
-- **Jump/Hit**: Press SPACE to jump and hit the volleyball
-- **Goal**: Keep the volleyball rally going as long as possible!
+- **Movement**: Arrow keys or WASD to move left/right
+- **Hit Ball**: SPACEBAR when close to the volleyball (180px range)
+- **Reset Game**: R key
+- **Mute/Unmute**: M key
 
-## Controls
+## 🎯 How to Play
 
-- `A` or `←` - Move left
-- `D` or `→` - Move right  
-- `SPACE` - Jump and hit volleyball
-- `R` - Reset game
-- `M` - Mute/unmute sounds
+1. **Select your character** from the main menu (Don Quixote, Ryoshu, or Ideal)
+2. **Move close to the volleyball** using arrow keys or WASD
+3. **Press SPACEBAR** when near the ball to hit it across the court
+4. **Keep the rally going** with the AI opponent
+5. **Build long rallies** - you'll hear a satisfying "awh" sound when they end (2+ passes)
 
-## Game Mechanics
+## 🚀 Quick Start
 
-- The volleyball follows realistic physics with gravity and momentum
-- Characters can hit the ball when it's close enough
-- The NPC opponent will track and hit the ball back to keep rallies going
-- Each successful hit plays both a hit sound effect and character voice
-- The game tracks the number of consecutive passes in the rally
+1. Open `index.html` in your web browser
+2. Or serve locally: `python -m http.server 8000` and visit `http://localhost:8000`
+3. Select your character and start playing!
+
+## 🔧 Technical Highlights
+
+### Gameplay Polish
+- **Hit Detection**: Center-to-center distance calculation (180px player, 200px NPC)
+- **Ball Physics**: Tuned gravity (800), bounce (0.35), friction (0.92), air resistance (0.999)
+- **Visual Clean-up**: Removed distracting trail effects and screen shake
+- **Size Optimization**: Larger characters and ball for better visibility
+
+### AI Behavior
+- **State Machine**: Tracking → Positioning → Ready → Waiting states
+- **Ball Prediction**: Calculates future ball position for strategic positioning
+- **Dynamic Speed**: Adjusts movement speed based on ball proximity and urgency
 
 ## Technical Details
 
