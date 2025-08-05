@@ -201,10 +201,10 @@ class Volleyball {
         return Math.abs(this.y + this.height - this.groundY) < 5;
     }
     
-    // Volleyball rally mechanics - proper back and forth
+    // Enhanced volleyball rally mechanics - much more reliable
     hitFromCharacter(character) {
         const now = Date.now();
-        if (now - this.lastHitTime < 500) return false; // Prevent spam, allow proper timing
+        if (now - this.lastHitTime < 300) return false; // Shorter cooldown for better responsiveness
         
         this.lastHitTime = now;
         
@@ -216,38 +216,38 @@ class Volleyball {
         
         const distance = Math.sqrt((ballCenterX - charCenterX) ** 2 + (ballCenterY - charCenterY) ** 2);
         
-        // Only hit if within reach
-        if (distance > 140) return false;
+        // Much more forgiving hit detection
+        if (distance > 200) return false;
         
-        // Determine which side and create rally-style pass
+        // Determine which side and create reliable rally pass
         const courtMiddle = this.engine?.canvas.width / 2 || 400;
         const isLeftSide = character.x < courtMiddle;
         
-        // Create proper volleyball rally arc
+        // Create consistent, reliable volleyball passes
         let targetX, targetY;
         
         if (isLeftSide) {
-            // Left side player - send to right side
-            targetX = courtMiddle + 150 + Math.random() * 200;
+            // Left side player - send to right side (more consistent targeting)
+            targetX = courtMiddle + 100 + Math.random() * 150;
         } else {
-            // Right side player - send to left side  
-            targetX = courtMiddle - 350 + Math.random() * 200;
+            // Right side player - send to left side (more consistent targeting)
+            targetX = courtMiddle - 250 + Math.random() * 150;
         }
         
-        targetY = this.groundY - 100; // Land nicely for next hit
+        targetY = this.groundY - 80; // Lower, more hittable landing
         
-        // Calculate beautiful volleyball arc
+        // Calculate reliable volleyball arc
         const horizontalDistance = targetX - ballCenterX;
         const verticalDistance = targetY - ballCenterY;
         
-        // Time for a nice volleyball flight
-        const flightTime = 1.8 + Math.random() * 0.4; // 1.8-2.2 seconds
+        // Shorter, more manageable flight time for better rallies
+        const flightTime = 1.2 + Math.random() * 0.3; // 1.2-1.5 seconds
         
-        // Calculate velocities for perfect arc
+        // Calculate velocities for consistent, hittable arc
         this.velocityX = horizontalDistance / flightTime;
         
-        // Calculate Y velocity to reach peak and land at target
-        const peakHeight = 250; // High volleyball arc
+        // Lower arc height for easier hitting
+        const peakHeight = 180; // Lower volleyball arc
         this.velocityY = -(peakHeight + this.gravity * flightTime * flightTime * 0.5) / flightTime;
         
         // Add slight randomness for realism

@@ -171,17 +171,12 @@ class GameEngine {
     }
     
     drawCleanCourt() {
-        // Just a subtle ground line for reference
+        // Completely clean court - no lines at all
         const ctx = this.ctx;
         const courtY = this.canvas.height * 0.75;
         
         ctx.save();
-        ctx.strokeStyle = 'rgba(139, 69, 19, 0.2)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, courtY);
-        ctx.lineTo(this.canvas.width, courtY);
-        ctx.stroke();
+        // No visual elements - pure clean beach
         ctx.restore();
     }
     

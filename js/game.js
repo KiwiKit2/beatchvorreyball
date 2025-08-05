@@ -81,10 +81,10 @@ class BeachVolleyballGame {
     }
     
     createGameObjects() {
-        // Calculate ground level based on screen height
-        this.groundLevel = (this.engine.canvas.height * 0.75); // Higher ground
+        // Calculate ground level lower on screen for better feel
+        this.groundLevel = (this.engine.canvas.height * 0.82); // Much lower position
         
-        // Create bigger player characters
+        // Create bigger player characters positioned lower
         this.player1 = new Character(120, this.groundLevel - 140, 'donQ', true);
         this.player2 = new Character(this.engine.canvas.width - 260, this.groundLevel - 140, 'donQ', false);
         
@@ -95,7 +95,7 @@ class BeachVolleyballGame {
         // Create volleyball in starting position
         this.volleyball = new Volleyball(
             this.player1.getCenterX() + 50,
-            this.groundLevel - 100
+            this.groundLevel - 120 // Start volleyball a bit higher
         );
         this.volleyball.setGroundLevel(this.groundLevel);
         
@@ -123,19 +123,23 @@ class BeachVolleyballGame {
         this.player2.isNPC = true;
         this.player2.npcState = 'ready';
         this.player2.npcTimer = 0;
-        this.player2.moveSpeed = 450; // Faster movement
-        this.player2.reactionTime = 150; // Quick reactions
+        this.player2.moveSpeed = 500; // Even faster movement
+        this.player2.reactionTime = 100; // Very quick reactions
         this.player2.anticipation = 0; // Predictive movement
-        this.player2.skillLevel = 0.8; // High skill level
+        this.player2.skillLevel = 0.9; // Very high skill level
+        this.player2.hitWindow = 250; // Larger time window to hit ball
     }
     
     canPlayerHit(player) {
-        // Simple volleyball rules: can hit when ball is close and not moving too fast
-        const distance = this.volleyball.isNearCharacter(player, 160);
-        const notTooFast = Math.abs(this.volleyball.velocityY) < 600;
-        const ballLowEnough = this.volleyball.y > this.groundLevel - 300; // Don't hit when too high
+        // Much more forgiving hit detection for better gameplay
+        const distance = this.volleyball.isNearCharacter(player, 200); // Larger hit zone
+        const ballHeight = this.volleyball.y + this.volleyball.height;
+        const courtHeight = this.groundLevel;
+        const ballInReachableHeight = ballHeight > courtHeight - 350; // Higher reach
+        const notMovingTooFast = Math.abs(this.volleyball.velocityY) < 800;
         
-        return distance && notTooFast && ballLowEnough;
+        // Always allow hitting when ball is near - no side restrictions for better flow
+        return distance && ballInReachableHeight && notMovingTooFast;
     }
     
     onVolleyballHit(player, side) {
@@ -193,10 +197,10 @@ class BeachVolleyballGame {
         
         switch (this.player2.npcState) {
             case 'tracking':
-                // Advanced tracking with anticipation
+                // Enhanced tracking with better anticipation
                 if (this.player2.npcTimer > this.player2.reactionTime) {
-                    // Check if ball is coming to NPC's side
-                    if (ballX > courtMiddle - 80 && ballVelX > 0) {
+                    // Check if ball is coming to NPC's side with more lenient conditions
+                    if (ballX > courtMiddle - 120 && ballVelX > -50) { // More forgiving tracking
                         this.player2.npcState = 'positioning';
                         this.player2.targetX = this.calculateOptimalPosition(futureX, futureY);
                     }
@@ -204,46 +208,57 @@ class BeachVolleyballGame {
                 break;
                 
             case 'positioning':
-                // Smart positioning with prediction
+                // Smarter positioning with better prediction
                 const distanceToTarget = this.player2.targetX - npcX;
                 
-                if (Math.abs(distanceToTarget) > 20) {
-                    // Move toward optimal position
+                if (Math.abs(distanceToTarget) > 15) { // Tighter positioning
+                    // Move toward optimal position with adaptive speed
                     const moveDirection = Math.sign(distanceToTarget);
-                    this.player2.velocityX = moveDirection * this.player2.moveSpeed;
+                    let moveSpeed = this.player2.moveSpeed;
                     
-                    // Dynamic speed adjustment based on urgency
+                    // Dynamic speed adjustment based on ball proximity and urgency
                     const ballDistance = Math.abs(ballX - npcX);
-                    if (ballDistance < 200) {
-                        this.player2.velocityX *= 1.5; // Speed up when ball is close
+                    if (ballDistance < 250) {
+                        moveSpeed *= 1.3; // Speed up when ball is close
                     }
+                    if (Math.abs(ballVelX) > 200) {
+                        moveSpeed *= 1.2; // Speed up for fast balls
+                    }
+                    
+                    this.player2.velocityX = moveDirection * moveSpeed;
                 } else {
-                    this.player2.velocityX *= 0.6; // Smooth deceleration
+                    this.player2.velocityX *= 0.5; // Quick deceleration
                     this.player2.npcState = 'ready';
                 }
                 
-                // Update target position continuously
+                // Continuously update target position for better tracking
                 this.player2.targetX = this.calculateOptimalPosition(futureX, futureY);
                 break;
                 
             case 'ready':
-                // Enhanced ready state with micro-adjustments
-                this.player2.velocityX *= 0.85;
+                // Enhanced ready state with better hit timing
+                this.player2.velocityX *= 0.75; // Controlled deceleration
                 
-                // Fine positioning adjustments
+                // Fine positioning adjustments with larger tolerance
                 const ballDistance = Math.abs(ballX - npcX);
-                if (ballDistance < 150 && ballVelX > 0) {
-                    const adjustment = (ballX - npcX) * 0.3;
+                if (ballDistance < 200 && ballVelX > -100) { // More forgiving conditions
+                    const adjustment = (ballX - npcX) * 0.4;
                     this.player2.velocityX += adjustment;
                 }
                 
-                // Check for hit opportunity with better timing
+                // Enhanced hit opportunity detection with better timing
                 if (this.canNPCHit()) {
-                    this.npcHitVolleyball();
+                    // Multiple attempts for more reliable hitting
+                    const hitSuccess = this.npcHitVolleyball();
+                    if (hitSuccess) {
+                        console.log("NPC hit successful!");
+                    }
                 }
                 
-                // Reset conditions
-                if (this.volleyball.isOnGround() || ballX < courtMiddle - 150 || ballVelX < -100) {
+                // More lenient reset conditions to avoid missing opportunities
+                if (this.volleyball.isOnGround() || 
+                    ballX < courtMiddle - 200 || 
+                    (ballVelX < -150 && ballDistance > 300)) {
                     this.player2.npcState = 'waiting';
                     this.rallyInProgress = false;
                     this.gameState = 'ready';
@@ -278,32 +293,38 @@ class BeachVolleyballGame {
     
     calculateOptimalPosition(futureX, futureY) {
         const courtMiddle = this.engine.canvas.width / 2;
-        const rightBound = this.engine.canvas.width - this.player2.width - 50;
-        const leftBound = courtMiddle + 50;
+        const rightBound = this.engine.canvas.width - this.player2.width - 40;
+        const leftBound = courtMiddle + 40;
         
         // Calculate where the ball will likely be when it reaches hitting height
         let optimalX = futureX;
         
-        // Add some strategic positioning
-        if (this.volleyball.velocityX > 300) {
-            optimalX += 30; // Position slightly ahead for fast balls
+        // Add strategic positioning based on ball speed and direction
+        if (this.volleyball.velocityX > 200) {
+            optimalX += 40; // Position ahead for fast balls
+        } else if (this.volleyball.velocityX > 100) {
+            optimalX += 20; // Slight positioning for medium speed
         }
         
-        // Keep within bounds
+        // Ensure the NPC stays in a good position to hit back
+        const centerBias = (courtMiddle + rightBound) / 2;
+        optimalX = optimalX * 0.7 + centerBias * 0.3; // Bias toward center
+        
+        // Keep within bounds with padding
         optimalX = Math.max(leftBound, Math.min(rightBound, optimalX));
         
         return optimalX;
     }
     
     canNPCHit() {
-        const ballDistance = this.volleyball.isNearCharacter(this.player2, 140);
+        const ballDistance = this.volleyball.isNearCharacter(this.player2, 180); // More forgiving
         const ballHeight = this.volleyball.y + this.volleyball.height;
         const courtHeight = this.groundLevel;
-        const ballNotTooHigh = ballHeight > courtHeight - 250;
-        const ballNotTooFast = Math.abs(this.volleyball.velocityY) < 700;
-        const ballInRange = Math.abs(this.volleyball.velocityX) > 50; // Ball must be moving
+        const ballNotTooHigh = ballHeight > courtHeight - 300;
+        const ballNotTooFast = Math.abs(this.volleyball.velocityY) < 800;
+        const ballIsMoving = Math.abs(this.volleyball.velocityX) > 20; // Ball must be moving slightly
         
-        return ballDistance && ballNotTooHigh && ballNotTooFast && ballInRange;
+        return ballDistance && ballNotTooHigh && ballNotTooFast && ballIsMoving;
     }
     
     npcHitVolleyball() {
