@@ -2,10 +2,28 @@
 class GameEngine {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', {
+            alpha: false, // Disable alpha channel for better performance
+            desynchronized: true // Allow async rendering
+        });
         this.isRunning = false;
         this.lastTime = 0;
         this.deltaTime = 0;
+        
+        // Performance optimization
+        this.targetFPS = 60;
+        this.frameTime = 1000 / this.targetFPS;
+        this.accumulator = 0;
+        this.maxDeltaTime = 33.33; // Cap at 30fps minimum
+        
+        // Canvas optimization
+        this.ctx.imageSmoothingEnabled = true;
+        this.ctx.imageSmoothingQuality = 'high';
+        
+        // FPS monitoring
+        this.fps = 60;
+        this.frameCount = 0;
+        this.lastFpsTime = 0;
         
         // Make canvas fullscreen
         this.resizeCanvas();
@@ -209,11 +227,30 @@ class GameEngine {
 
     
     gameLoop(currentTime) {
-        this.deltaTime = currentTime - this.lastTime;
+        // Calculate delta time and cap it to prevent large jumps
+        let rawDelta = currentTime - this.lastTime;
+        this.deltaTime = Math.min(rawDelta, this.maxDeltaTime);
         this.lastTime = currentTime;
         
-        this.update(this.deltaTime);
-        this.render();
+        // FPS calculation
+        this.frameCount++;
+        if (currentTime - this.lastFpsTime >= 1000) {
+            this.fps = this.frameCount;
+            this.frameCount = 0;
+            this.lastFpsTime = currentTime;
+        }
+        
+        // Fixed timestep with accumulator for smoother physics
+        this.accumulator += this.deltaTime;
+        
+        while (this.accumulator >= this.frameTime) {
+            this.update(this.frameTime);
+            this.accumulator -= this.frameTime;
+        }
+        
+        // Render with interpolation factor
+        const interpolation = this.accumulator / this.frameTime;
+        this.render(interpolation);
         
         if (this.isRunning) {
             requestAnimationFrame((time) => this.gameLoop(time));

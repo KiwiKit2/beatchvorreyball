@@ -32,6 +32,11 @@ class BeachVolleyballGame {
         this.isHost = false;
         this.opponentId = null;
         
+        // Performance optimization
+        this.lastSyncTime = 0;
+        this.syncInterval = 50; // Sync every 50ms instead of every frame (20fps sync vs 60fps)
+        this.frameCount = 0;
+        
         // Don't initialize immediately - wait for menu
         this.setupMenuIntegration();
     }
@@ -245,25 +250,29 @@ class BeachVolleyballGame {
         // Listen for game state updates from opponent
         multiplayerManager.onGameStateUpdate((gameState) => {
             if (gameState.ball) {
-                // Sync ball position and movement
-                this.volleyball.x = gameState.ball.x;
-                this.volleyball.y = gameState.ball.y;
-                this.volleyball.velocityX = gameState.ball.velocityX;
-                this.volleyball.velocityY = gameState.ball.velocityY;
+                // Smooth interpolation for ball position to reduce stutter
+                const lerpFactor = 0.3; // Adjust this for smoother/more responsive feel
+                
+                this.volleyball.x = lerp(this.volleyball.x, gameState.ball.x, lerpFactor);
+                this.volleyball.y = lerp(this.volleyball.y, gameState.ball.y, lerpFactor);
+                this.volleyball.velocityX = lerp(this.volleyball.velocityX, gameState.ball.velocityX, lerpFactor);
+                this.volleyball.velocityY = lerp(this.volleyball.velocityY, gameState.ball.velocityY, lerpFactor);
                 this.volleyball.isMoving = gameState.ball.isMoving;
             }
             
-            // Sync opponent player position
+            // Smooth interpolation for opponent player position
+            const playerLerpFactor = 0.5; // Slightly more responsive for players
+            
             if (this.isHost && gameState.player2) {
-                this.player2.x = gameState.player2.x;
-                this.player2.y = gameState.player2.y;
-                this.player2.velocityX = gameState.player2.velocityX;
-                this.player2.velocityY = gameState.player2.velocityY;
+                this.player2.x = lerp(this.player2.x, gameState.player2.x, playerLerpFactor);
+                this.player2.y = lerp(this.player2.y, gameState.player2.y, playerLerpFactor);
+                this.player2.velocityX = lerp(this.player2.velocityX, gameState.player2.velocityX, playerLerpFactor);
+                this.player2.velocityY = lerp(this.player2.velocityY, gameState.player2.velocityY, playerLerpFactor);
             } else if (!this.isHost && gameState.player1) {
-                this.player1.x = gameState.player1.x;
-                this.player1.y = gameState.player1.y;
-                this.player1.velocityX = gameState.player1.velocityX;
-                this.player1.velocityY = gameState.player1.velocityY;
+                this.player1.x = lerp(this.player1.x, gameState.player1.x, playerLerpFactor);
+                this.player1.y = lerp(this.player1.y, gameState.player1.y, playerLerpFactor);
+                this.player1.velocityX = lerp(this.player1.velocityX, gameState.player1.velocityX, playerLerpFactor);
+                this.player1.velocityY = lerp(this.player1.velocityY, gameState.player1.velocityY, playerLerpFactor);
             }
         });
     }
@@ -271,12 +280,19 @@ class BeachVolleyballGame {
     syncGameState() {
         if (!this.isMultiplayer) return;
         
+        // Throttle sync rate for performance
+        const currentTime = performance.now();
+        if (currentTime - this.lastSyncTime < this.syncInterval) {
+            return;
+        }
+        this.lastSyncTime = currentTime;
+        
         const updates = {
             ball: {
-                x: this.volleyball.x,
-                y: this.volleyball.y,
-                velocityX: this.volleyball.velocityX,
-                velocityY: this.volleyball.velocityY,
+                x: Math.round(this.volleyball.x * 10) / 10, // Reduce precision for less data
+                y: Math.round(this.volleyball.y * 10) / 10,
+                velocityX: Math.round(this.volleyball.velocityX * 10) / 10,
+                velocityY: Math.round(this.volleyball.velocityY * 10) / 10,
                 isMoving: this.volleyball.isMoving
             }
         };
@@ -284,17 +300,17 @@ class BeachVolleyballGame {
         // Sync our player position
         if (this.isHost) {
             updates.player1 = {
-                x: this.player1.x,
-                y: this.player1.y,
-                velocityX: this.player1.velocityX,
-                velocityY: this.player1.velocityY
+                x: Math.round(this.player1.x * 10) / 10,
+                y: Math.round(this.player1.y * 10) / 10,
+                velocityX: Math.round(this.player1.velocityX * 10) / 10,
+                velocityY: Math.round(this.player1.velocityY * 10) / 10
             };
         } else {
             updates.player2 = {
-                x: this.player2.x,
-                y: this.player2.y,
-                velocityX: this.player2.velocityX,
-                velocityY: this.player2.velocityY
+                x: Math.round(this.player2.x * 10) / 10,
+                y: Math.round(this.player2.y * 10) / 10,
+                velocityX: Math.round(this.player2.velocityX * 10) / 10,
+                velocityY: Math.round(this.player2.velocityY * 10) / 10
             };
         }
         
