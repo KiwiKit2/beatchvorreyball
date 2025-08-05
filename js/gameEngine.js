@@ -12,9 +12,7 @@ class GameEngine {
         
         // Performance optimization
         this.targetFPS = 60;
-        this.frameTime = 1000 / this.targetFPS;
-        this.accumulator = 0;
-        this.maxDeltaTime = 16.67; // Cap at 60fps minimum for smoother experience
+        this.maxDeltaTime = 50; // Cap delta to prevent huge jumps after alt-tab
         
         // Canvas optimization
         this.ctx.imageSmoothingEnabled = true;
@@ -227,9 +225,9 @@ class GameEngine {
 
     
     gameLoop(currentTime) {
-        // Calculate delta time and cap it to prevent large jumps
-        let rawDelta = currentTime - this.lastTime;
-        this.deltaTime = Math.min(rawDelta, this.maxDeltaTime);
+        // Simple delta time calculation with protection against alt-tab
+        let deltaTime = currentTime - this.lastTime;
+        deltaTime = Math.min(deltaTime, this.maxDeltaTime); // Prevent huge jumps
         this.lastTime = currentTime;
         
         // FPS calculation
@@ -240,8 +238,8 @@ class GameEngine {
             this.lastFpsTime = currentTime;
         }
         
-        // Simplified update - no accumulator for smoother feel
-        this.update(this.deltaTime);
+        // Simple update and render
+        this.update(deltaTime);
         this.render();
         
         if (this.isRunning) {
