@@ -304,6 +304,13 @@ class MenuManager {
         const aboutModal = document.getElementById('aboutModal');
         const closeModal = document.getElementById('closeModal');
         
+        console.log('Setting up dropdown menu...');
+        console.log('dropdownToggle:', dropdownToggle);
+        console.log('dropdownContent:', dropdownContent);
+        console.log('aboutBtn:', aboutBtn);
+        console.log('aboutModal:', aboutModal);
+        console.log('closeModal:', closeModal);
+        
         // Force hide modal on initialization
         if (aboutModal) {
             aboutModal.classList.add('hidden');
@@ -312,13 +319,17 @@ class MenuManager {
         
         if (!dropdownToggle || !dropdownContent) {
             console.warn('Dropdown elements not found');
+            console.warn('dropdownToggle found:', !!dropdownToggle);
+            console.warn('dropdownContent found:', !!dropdownContent);
             return;
         }
         
         // Toggle dropdown
         dropdownToggle.addEventListener('click', (e) => {
             e.stopPropagation();
+            console.log('Dropdown toggle clicked!');
             dropdownContent.classList.toggle('show');
+            console.log('Dropdown classes after toggle:', dropdownContent.className);
         });
         
         // Close dropdown when clicking outside
