@@ -34,6 +34,9 @@ class MenuManager {
         // Setup start button
         this.setupStartButton();
         
+        // Setup dropdown menu
+        this.setupDropdownMenu();
+        
         // Show menu initially
         this.showMenu();
     }
@@ -292,6 +295,75 @@ class MenuManager {
         const statusClass = status || 'disconnected';
         
         connectionStatus.innerHTML = `<span class="online-status ${statusClass}"></span>${message}`;
+    }
+    
+    setupDropdownMenu() {
+        const dropdownToggle = document.getElementById('dropdownToggle');
+        const dropdownContent = document.getElementById('dropdownContent');
+        const aboutBtn = document.getElementById('aboutBtn');
+        const aboutModal = document.getElementById('aboutModal');
+        const closeModal = document.getElementById('closeModal');
+        
+        if (!dropdownToggle || !dropdownContent) {
+            console.warn('Dropdown elements not found');
+            return;
+        }
+        
+        // Toggle dropdown
+        dropdownToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            dropdownContent.classList.toggle('show');
+        });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!dropdownToggle.contains(e.target) && !dropdownContent.contains(e.target)) {
+                dropdownContent.classList.remove('show');
+            }
+        });
+        
+        // About modal functionality
+        if (aboutBtn && aboutModal && closeModal) {
+            aboutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropdownContent.classList.remove('show');
+                aboutModal.classList.remove('hidden');
+            });
+            
+            // Multiple ways to close the modal
+            const closeModalFunction = () => {
+                aboutModal.classList.add('hidden');
+            };
+            
+            // Close button
+            closeModal.addEventListener('click', closeModalFunction);
+            
+            // Click outside modal
+            aboutModal.addEventListener('click', (e) => {
+                if (e.target === aboutModal) {
+                    closeModalFunction();
+                }
+            });
+            
+            // Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !aboutModal.classList.contains('hidden')) {
+                    closeModalFunction();
+                }
+            });
+            
+            // Add a backup close method - click anywhere on modal content
+            const modalContent = aboutModal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.addEventListener('click', (e) => {
+                    // Don't close if clicking on text/content, only on padding areas
+                    if (e.target === modalContent) {
+                        closeModalFunction();
+                    }
+                });
+            }
+        }
     }
 }
 

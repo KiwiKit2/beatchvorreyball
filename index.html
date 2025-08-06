@@ -306,6 +306,172 @@
         .hidden {
             display: none;
         }
+        
+        /* Dropdown Menu Styles */
+        .dropdown-menu {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1002;
+        }
+        
+        .dropdown-toggle {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 18px;
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .dropdown-toggle:hover {
+            background: rgba(0, 0, 0, 0.9);
+            border-color: rgba(255, 255, 255, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .dropdown-content {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            min-width: 200px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+        }
+        
+        .dropdown-content.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .dropdown-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dropdown-icon {
+            margin-right: 10px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-content {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            color: white;
+            position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
+            background: rgba(255, 0, 0, 0.1);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        
+        .close-modal:hover {
+            color: white;
+            background: rgba(255, 0, 0, 0.3);
+            transform: scale(1.1);
+        }
+        
+        .modal-content h2 {
+            margin: 0 0 25px 0;
+            font-size: 24px;
+            text-align: center;
+            color: #4CAF50;
+        }
+        
+        .modal-section {
+            margin-bottom: 25px;
+        }
+        
+        .modal-section h3 {
+            margin: 0 0 12px 0;
+            font-size: 18px;
+            color: #2196F3;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        
+        .modal-section p {
+            margin: 8px 0;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .modal-section ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .modal-section li {
+            margin: 5px 0;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .modal-section strong {
+            color: #4CAF50;
+        }
     </style>
 </head>
 <body>
@@ -319,6 +485,58 @@
     <a href="https://github.com/KiwiKit2" target="_blank" class="github-signature">
         <img src="images/box.png" alt="GitHub">
     </a>
+    
+    <!-- Dropdown Menu -->
+    <div class="dropdown-menu">
+        <button class="dropdown-toggle" id="dropdownToggle">☰</button>
+        <div class="dropdown-content" id="dropdownContent">
+            <a href="#" id="aboutBtn" class="dropdown-item">
+                <span class="dropdown-icon">?</span>
+                <span>About & Controls</span>
+            </a>
+            <a href="https://ko-fi.com/kiwikit" target="_blank" class="dropdown-item">
+                <span class="dropdown-icon">☕</span>
+                <span>Support on Ko-fi</span>
+            </a>
+            <a href="https://github.com/KiwiKit2" target="_blank" class="dropdown-item">
+                <span class="dropdown-icon">📦</span>
+                <span>GitHub</span>
+            </a>
+        </div>
+    </div>
+    
+    <!-- About Modal -->
+    <div id="aboutModal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <h2>🏐 Beach Volleyball with Don Quixote</h2>
+            
+            <div class="modal-section">
+                <h3>Controls</h3>
+                <p><strong>WASD</strong> - Move around</p>
+                <p><strong>Space</strong> - Jump and bump the ball</p>
+                <p><strong>Local 1v1:</strong> Player 2 uses Arrow Keys + Enter</p>
+            </div>
+            
+            <div class="modal-section">
+                <h3>About This Project</h3>
+                <p>This is just a silly little game I made because I wanted to mess around with something fun! It's a simple beach volleyball game featuring characters from Limbus Company.</p>
+                <p>Nothing too serious - just wanted to create something entertaining and learn a bit along the way. Hope you enjoy playing it as much as I enjoyed making it!</p>
+            </div>
+            
+            <div class="modal-section">
+                <h3>Special Thanks</h3>
+                <p>Huge thanks to my amazing testers who helped make this game better:</p>
+                <ul>
+                    <li><strong>Viki10Kit</strong> - For being an awesome tester</li>
+                    <li><strong>Mini</strong> - For great feedback and testing</li>
+                    <li><strong>Shoshu</strong> - For thorough testing and suggestions</li>
+                    <li><strong>Moony</strong> - For helping debug and test features</li>
+                </ul>
+                <p>Couldn't have done it without you all! 💜</p>
+            </div>
+        </div>
+    </div>
     
     <!-- Game Menu -->
     <div id="gameMenu" class="menu-overlay">
