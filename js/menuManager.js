@@ -304,6 +304,12 @@ class MenuManager {
         const aboutModal = document.getElementById('aboutModal');
         const closeModal = document.getElementById('closeModal');
         
+        // Force hide modal on initialization
+        if (aboutModal) {
+            aboutModal.classList.add('hidden');
+            console.log('Modal forced to hidden state');
+        }
+        
         if (!dropdownToggle || !dropdownContent) {
             console.warn('Dropdown elements not found');
             return;
@@ -324,20 +330,30 @@ class MenuManager {
         
         // About modal functionality
         if (aboutBtn && aboutModal && closeModal) {
+            // Make sure modal starts hidden
+            aboutModal.classList.add('hidden');
+            
             aboutBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 dropdownContent.classList.remove('show');
                 aboutModal.classList.remove('hidden');
+                console.log('About modal opened');
             });
             
             // Multiple ways to close the modal
             const closeModalFunction = () => {
                 aboutModal.classList.add('hidden');
+                console.log('About modal closed');
             };
             
-            // Close button
-            closeModal.addEventListener('click', closeModalFunction);
+            // Close button with debugging
+            closeModal.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Close button clicked');
+                closeModalFunction();
+            });
             
             // Click outside modal
             aboutModal.addEventListener('click', (e) => {
